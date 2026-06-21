@@ -1,5 +1,6 @@
 export const STORAGE_KEYS = {
   apiKey: "bin-deepseek-api-key",
+  rememberApiKey: "bin-deepseek-remember-api-key",
   endpoint: "bin-deepseek-endpoint",
   model: "bin-deepseek-model",
   thinkingMode: "bin-deepseek-thinking-mode",
@@ -19,6 +20,7 @@ export const MODE_LABELS = {
 
 export const DEFAULT_SETTINGS = {
   apiKey: "",
+  rememberApiKey: true,
   endpoint: "https://api.deepseek.com/chat/completions",
   model: "deepseek-v4-flash",
   thinkingMode: "high",
