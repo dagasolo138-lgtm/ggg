@@ -50,7 +50,13 @@ npm run dev
 npm run build
 ```
 
-产物会生成到 `dist/`，适合发布到 GitHub Pages 或其他静态托管。
+产物会生成到 `dist/`。
+
+## GitHub Pages
+
+仓库已经带有 `.github/workflows/deploy-pages.yml`。每次推送到 `main`，Actions 会安装依赖、构建 `dist/`，再部署到 GitHub Pages。
+
+第一次使用时，在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。随后等待 Actions 完成即可。
 
 ## DeepSeek 调用逻辑
 
