@@ -3,6 +3,12 @@ const MAX_ARTIFACTS = 36;
 const MAX_VERSIONS_PER_ARTIFACT = 24;
 const MAX_ARTIFACT_CHARS = 160_000;
 const SUPPORTED_TYPES = new Set(["html", "svg", "markdown", "json"]);
+const ARTIFACT_TYPE_CONFIG = {
+  html: { label: "HTML 网页", extension: "html", mime: "text/html;charset=utf-8" },
+  svg: { label: "SVG 图形", extension: "svg", mime: "image/svg+xml;charset=utf-8" },
+  markdown: { label: "Markdown 文档", extension: "md", mime: "text/markdown;charset=utf-8" },
+  json: { label: "JSON 数据", extension: "json", mime: "application/json;charset=utf-8" },
+};
 
 function createId(prefix) {
   if (typeof crypto?.randomUUID === "function") return `${prefix}-${crypto.randomUUID()}`;
@@ -15,6 +21,10 @@ function clone(value) {
 
 function normalizeType(type) {
   return SUPPORTED_TYPES.has(type) ? type : "markdown";
+}
+
+export function getArtifactTypeConfig(type) {
+  return ARTIFACT_TYPE_CONFIG[normalizeType(type)] || ARTIFACT_TYPE_CONFIG.markdown;
 }
 
 function cleanTitle(value, fallback = "未命名作品") {
