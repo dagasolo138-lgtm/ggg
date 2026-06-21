@@ -31,6 +31,7 @@ export function createConversationActions({
     ui.renameDialog.hidden = true;
     ui.renameDialog.setAttribute("aria-hidden", "true");
     ui.renameTitleInput.value = "";
+    ui.renameDialogError.textContent = "";
   }
 
   function openRenameDialog() {
@@ -38,6 +39,7 @@ export function createConversationActions({
     if (!conversation?.messages?.length) return;
     closeMenu();
     ui.renameTitleInput.value = conversation.title;
+    ui.renameDialogError.textContent = "";
     ui.renameDialog.hidden = false;
     ui.renameDialog.setAttribute("aria-hidden", "false");
     window.setTimeout(() => {
@@ -57,6 +59,9 @@ export function createConversationActions({
     ui.conversationStarLabel.textContent = starred ? "取消收藏" : "收藏";
     ui.conversationStarIcon.dataset.state = starred ? "active" : "inactive";
   }
+
+  closeMenu();
+  closeRenameDialog();
 
   ui.conversationNewButton.addEventListener("click", () => {
     closeMenu();
