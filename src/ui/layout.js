@@ -11,7 +11,6 @@ export function renderShell(root) {
             <button id="open-settings-hub" class="profile-button" type="button" aria-label="打开设置">BH</button>
           </div>
         </div>
-        <p class="history-title">对话历史</p>
         <div id="history-list" class="history-list" aria-label="对话历史列表"></div>
         <button id="new-chat" class="new-chat-button" type="button">${icon("plus")}<span>新对话</span></button>
       </aside>
@@ -27,7 +26,6 @@ export function renderShell(root) {
             <button id="conversation-menu-trigger" class="conversation-action-button" type="button" aria-label="当前对话更多操作" aria-expanded="false">${icon("more")}</button>
 
             <div id="conversation-menu" class="conversation-menu" hidden role="menu" aria-label="当前对话操作">
-              <p class="conversation-menu-label">当前对话</p>
               <button id="conversation-share" class="conversation-menu-item" type="button" role="menuitem">${icon("share")}<span>分享</span></button>
               <button id="conversation-star" class="conversation-menu-item" type="button" role="menuitem">${icon("star")}<span id="conversation-star-label">收藏</span></button>
               <button id="conversation-rename" class="conversation-menu-item" type="button" role="menuitem">${icon("edit")}<span>重命名</span></button>
@@ -48,13 +46,12 @@ export function renderShell(root) {
           <form id="composer" class="composer-card">
             <input id="attachment-input" type="file" multiple hidden accept="image/*,.txt,.md,.markdown,.csv,.json,.log,.js,.jsx,.ts,.tsx,.py,.html,.css,.xml,.yml,.yaml,.sql,.java,.c,.cpp,.h,.sh" />
             <div id="attachment-tray" class="attachment-tray" hidden aria-live="polite"></div>
-            <textarea id="prompt" rows="1" placeholder="Chat with DeepSeek" autocomplete="off"></textarea>
+            <textarea id="prompt" rows="1" placeholder="输入消息" autocomplete="off"></textarea>
             <div class="composer-toolbar">
               <button id="attach-button" class="circle-button dark-button" type="button" aria-label="添加附件">${icon("plus")}</button>
               <button id="model-pill" class="model-pill" type="button"><span id="model-pill-text"></span></button>
               <div class="composer-actions">
                 <button id="stop-button" class="circle-button stop-button" type="button" hidden aria-label="停止生成">${icon("stop")}</button>
-                <button class="circle-button dark-button" type="button" aria-label="语音输入">${icon("mic")}</button>
                 <button id="send-button" class="circle-button send-button" type="submit" aria-label="发送消息">${icon("send")}</button>
               </div>
             </div>
@@ -66,14 +63,13 @@ export function renderShell(root) {
       <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
       <aside id="settings-sheet" class="settings-sheet" aria-hidden="true">
         <div class="sheet-head">
-          <div><p class="eyebrow">CONNECTION</p><h2>模型与 API</h2></div>
+          <div><h2>模型与 API</h2></div>
           <button id="close-settings" class="circle-button sheet-close" type="button" aria-label="关闭设置">${icon("close")}</button>
         </div>
         <div class="sheet-body">
           <label class="field-label" for="api-key">API Key</label>
           <div class="secret-field"><input id="api-key" type="password" autocomplete="off" placeholder="sk-..." /><button id="toggle-key" class="icon-text-button" type="button">显示</button></div>
           <label class="remember-key"><input id="remember-api-key" type="checkbox" /><span>在此设备记住 API Key</span></label>
-          <p class="field-help">默认保存在这台设备的浏览器内。关闭此开关后，Key 只在当前页面会话保留。</p>
 
           <label class="field-label" for="endpoint">接口地址</label>
           <input id="endpoint" type="url" spellcheck="false" />
@@ -91,8 +87,7 @@ export function renderShell(root) {
           <textarea id="system-prompt" rows="5"></textarea>
 
           <div class="settings-actions"><button id="save-settings" class="primary-button" type="button">保存并关闭</button><button id="clear-key" class="text-button" type="button">清除 Key</button></div>
-          <p id="settings-save-status" class="settings-save-status" aria-live="polite">更改会自动保存到此设备</p>
-          <div class="security-note"><strong>部署前要知道</strong><p>浏览器本地保存适合你自己的设备。设备共享、浏览器同步或不受信任脚本环境下，不要勾选“记住 API Key”。</p></div>
+          <p id="settings-save-status" class="settings-save-status" aria-live="polite"></p>
         </div>
       </aside>
 
@@ -110,7 +105,7 @@ export function renderShell(root) {
       <aside id="artifact-workspace" class="artifact-workspace" aria-hidden="true" hidden>
         <header class="artifact-workspace-header">
           <button id="artifact-workspace-close" class="circle-button artifact-workspace-close" type="button" aria-label="关闭 Artifact">${icon("close")}</button>
-          <div><p>ARTIFACTS</p><h2 id="artifact-workspace-title">Artifacts</h2></div>
+          <div><h2 id="artifact-workspace-title">Artifacts</h2></div>
           <span class="artifact-workspace-spacer" aria-hidden="true"></span>
         </header>
         <main id="artifact-workspace-content" class="artifact-workspace-content"></main>
@@ -119,7 +114,6 @@ export function renderShell(root) {
       <div id="rename-dialog" class="rename-dialog" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="rename-dialog-title">
         <form id="rename-dialog-form" class="rename-dialog-card">
           <h2 id="rename-dialog-title">重命名对话</h2>
-          <p>名称只保存在当前浏览器。</p>
           <input id="rename-title-input" type="text" maxlength="80" autocomplete="off" placeholder="输入对话名称" />
           <p id="rename-dialog-error" class="rename-dialog-error" role="alert"></p>
           <div class="rename-dialog-actions">
