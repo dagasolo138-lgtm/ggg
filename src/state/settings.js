@@ -51,6 +51,13 @@ export function clearStoredApiKey() {
   sessionStorage.removeItem(STORAGE_KEYS.apiKey);
 }
 
+export function clearAllStoredSettings() {
+  Object.values(STORAGE_KEYS).forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+}
+
 export function validateSettings(settings) {
   if (!settings.apiKey.trim()) return "请先填写 API Key。";
   if (!settings.endpoint.trim()) return "请填写接口地址。";
