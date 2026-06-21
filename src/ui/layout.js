@@ -3,33 +3,46 @@ import { icon } from "./icons.js";
 export function renderShell(root) {
   root.innerHTML = `
     <div class="app-shell">
-      <header class="topbar">
-        <button id="open-settings" class="circle-button ghost-button" type="button" aria-label="打开设置">${icon("menu")}</button>
-        <button id="clear-chat" class="circle-button ghost-button" type="button" aria-label="清空对话">${icon("clear")}</button>
-      </header>
+      <aside id="history-drawer" class="history-drawer" aria-hidden="true">
+        <div class="drawer-head">
+          <strong class="drawer-brand">bin</strong>
+          <button id="open-settings" class="profile-button" type="button" aria-label="打开设置">BH</button>
+        </div>
+        <p class="history-title">对话历史</p>
+        <div id="history-list" class="history-list" aria-label="对话历史列表"></div>
+        <button id="new-chat" class="new-chat-button" type="button">${icon("plus")}<span>新对话</span></button>
+      </aside>
+      <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
 
-      <main class="stage">
-        <section id="empty-state" class="empty-state">
-          <div class="burst" aria-hidden="true">${"<i></i>".repeat(8)}</div>
-          <h1>bin returns!</h1>
-        </section>
-        <section id="messages" class="messages" aria-live="polite"></section>
-      </main>
+      <div id="app-frame" class="app-frame">
+        <header class="topbar">
+          <button id="open-history" class="circle-button ghost-button" type="button" aria-label="打开对话历史">${icon("menu")}</button>
+          <button id="clear-chat" class="circle-button ghost-button" type="button" aria-label="清空当前对话">${icon("clear")}</button>
+        </header>
 
-      <div class="composer-wrap">
-        <form id="composer" class="composer-card">
-          <textarea id="prompt" rows="1" placeholder="Chat with DeepSeek" autocomplete="off"></textarea>
-          <div class="composer-toolbar">
-            <button class="circle-button dark-button" type="button" aria-label="更多功能">${icon("plus")}</button>
-            <button id="model-pill" class="model-pill" type="button"><span id="model-pill-text"></span></button>
-            <div class="composer-actions">
-              <button id="stop-button" class="circle-button stop-button" type="button" hidden aria-label="停止生成">${icon("stop")}</button>
-              <button class="circle-button dark-button" type="button" aria-label="语音输入">${icon("mic")}</button>
-              <button id="send-button" class="circle-button send-button" type="submit" aria-label="发送消息">${icon("send")}</button>
+        <main class="stage">
+          <section id="empty-state" class="empty-state">
+            <div class="burst" aria-hidden="true">${"<i></i>".repeat(8)}</div>
+            <h1>bin returns!</h1>
+          </section>
+          <section id="messages" class="messages" aria-live="polite"></section>
+        </main>
+
+        <div class="composer-wrap">
+          <form id="composer" class="composer-card">
+            <textarea id="prompt" rows="1" placeholder="Chat with DeepSeek" autocomplete="off"></textarea>
+            <div class="composer-toolbar">
+              <button class="circle-button dark-button" type="button" aria-label="更多功能">${icon("plus")}</button>
+              <button id="model-pill" class="model-pill" type="button"><span id="model-pill-text"></span></button>
+              <div class="composer-actions">
+                <button id="stop-button" class="circle-button stop-button" type="button" hidden aria-label="停止生成">${icon("stop")}</button>
+                <button class="circle-button dark-button" type="button" aria-label="语音输入">${icon("mic")}</button>
+                <button id="send-button" class="circle-button send-button" type="submit" aria-label="发送消息">${icon("send")}</button>
+              </div>
             </div>
-          </div>
-        </form>
-        <p id="error-message" class="error-message" role="alert"></p>
+          </form>
+          <p id="error-message" class="error-message" role="alert"></p>
+        </div>
       </div>
 
       <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
@@ -66,6 +79,13 @@ export function renderShell(root) {
   `;
 
   return {
+    shell: root.querySelector(".app-shell"),
+    frame: root.querySelector("#app-frame"),
+    openHistory: root.querySelector("#open-history"),
+    historyDrawer: root.querySelector("#history-drawer"),
+    historyList: root.querySelector("#history-list"),
+    drawerBackdrop: root.querySelector("#drawer-backdrop"),
+    newChat: root.querySelector("#new-chat"),
     openSettings: root.querySelector("#open-settings"),
     closeSettings: root.querySelector("#close-settings"),
     sheet: root.querySelector("#settings-sheet"),
