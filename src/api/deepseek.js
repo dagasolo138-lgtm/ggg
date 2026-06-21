@@ -29,7 +29,7 @@ function parseSseEvent(rawEvent, onDelta) {
 export async function streamCompletion({ settings, history, signal, onDelta }) {
   const messages = [
     ...(settings.systemPrompt.trim() ? [{ role: "system", content: settings.systemPrompt.trim() }] : []),
-    ...history.map(({ role, content }) => ({ role, content })),
+    ...history.map(({ role, content, apiContent }) => ({ role, content: apiContent || content })),
   ];
 
   const body = {
