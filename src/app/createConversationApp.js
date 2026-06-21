@@ -1,10 +1,14 @@
 import { streamCompletion } from "../api/deepseek.js";
-import { MODE_LABELS, MODEL_LABELS } from "../config/constants.js";
+import { MODE_LABELS } from "../config/constants.js";
 import { createConversationStore } from "../features/conversations/conversationStore.js";
 import { renderHistorySidebar } from "../features/conversations/historySidebar.js";
 import { clearStoredApiKey, loadSettings, persistSettings, validateSettings } from "../state/settings.js";
 import { renderShell } from "../ui/layout.js";
 import { finalizeStreamingMessage, renderConversation, renderMessage, scrollToEnd, updateStreamingMessage } from "../ui/messages.js";
+
+function compactModelName(model) {
+  return model === "deepseek-v4-pro" ? "V4 Pro" : "V4";
+}
 
 export function createConversationApp(root) {
   const ui = renderShell(root);
@@ -21,7 +25,7 @@ export function createConversationApp(root) {
   }
 
   function updatePill() {
-    ui.modelPillText.textContent = `${MODEL_LABELS[settings.model] || settings.model} · ${MODE_LABELS[settings.thinkingMode]}`;
+    ui.modelPillText.textContent = `${compactModelName(settings.model)} · ${MODE_LABELS[settings.thinkingMode]}`;
   }
 
   function syncEmpty() {
@@ -33,8 +37,10 @@ export function createConversationApp(root) {
   }
 
   function setSending(active) {
+    ui.sendButton.hidden = active;
     ui.sendButton.disabled = active;
     ui.stopButton.hidden = !active;
+    ui.composer.classList.toggle("is-sending", active);
   }
 
   function openDrawer() {
@@ -129,7 +135,7 @@ export function createConversationApp(root) {
 
   function autoGrow() {
     ui.prompt.style.height = "auto";
-    ui.prompt.style.height = `${Math.min(ui.prompt.scrollHeight, 160)}px`;
+    ui.prompt.style.height = `${Math.min(ui.prompt.scrollHeight, 128)}px`;
   }
 
   async function send(event) {
@@ -183,19 +189,21 @@ export function createConversationApp(root) {
       if (id !== requestId) return;
       if (!finalContent.trim()) throw new Error("接口没有返回最终回答。请检查模型权限、内容限制或系统提示词。");
 
+      const hasReasoning = reasoningContent.trim().length > 0;
       conversations.append("assistant", finalContent, {
-        reasoningContent,
+        reasoningContent: hasReasoning ? reasoningContent : "",
         thinkingMode: settings.thinkingMode,
       });
-      finalizeStreamingMessage(assistantView, { hasReasoning: Boolean(reasoningContent) });
+      finalizeStreamingMessage(assistantView, { hasReasoning });
       refreshHistory();
     } catch (error) {
       if (id !== requestId) return;
       const stopped = error?.name === "AbortError";
+      const hasReasoning = reasoningContent.trim().length > 0;
       conversations.removeLast();
 
-      if (finalContent || reasoningContent) {
-        finalizeStreamingMessage(assistantView, { hasReasoning: Boolean(reasoningContent) });
+      if (finalContent || hasReasoning) {
+        finalizeStreamingMessage(assistantView, { hasReasoning });
         if (!finalContent) assistantView.answer.textContent = stopped ? "已停止生成。" : "生成中断。";
       } else {
         assistantView.article.remove();
@@ -218,6 +226,7 @@ export function createConversationApp(root) {
   fillForm();
   updatePill();
   renderCurrentConversation();
+  setSending(false);
   autoGrow();
 
   ui.openHistory.addEventListener("click", openDrawer);
