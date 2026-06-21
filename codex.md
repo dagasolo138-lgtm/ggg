@@ -1,71 +1,66 @@
 # ggg 项目 Codex
 
-> **强制规则：每次开发、修改、调试或交接本项目之前，必须先完整阅读本文件。**
+> 本文件是项目的长期技术档案，用于防止上下文丢失、辅助新对话接手项目，并保存当前实际架构、数据流、文件职责、功能边界与版本记录。
 >
-> 本文件是项目的长期技术档案，用于防止上下文丢失，并让新的对话或新的开发者快速接手。每次代码、架构、数据结构、部署方式、功能边界发生变化后，必须同步更新相关章节，且必须在本文末尾的“版本更新记录”追加一条概述。
+> **规则：不要求每次开发前阅读 README 或 Codex；但每次开发完成后，必须更新本文相关章节，并在末尾“版本更新记录”追加一条概述。**
 
 ---
 
 ## 1. 项目定位
 
-- **仓库**：`dagasolo138-lgtm/ggg`
-- **项目名**：`bin returns!`
-- **当前包版本**：`0.2.0`
-- **形态**：Vite + 原生 ES Modules 的纯前端 DeepSeek 对话应用。
-- **部署方式**：GitHub Pages。
-- **核心目标**：做一个以移动端为主、偏 Claude 风格交互的个人 DeepSeek API 对话前端；功能优先保证真实可用，不伪造后端、账户额度、图片识别、连接器等能力。
+| 项目项 | 当前值 |
+|---|---|
+| 仓库 | `dagasolo138-lgtm/ggg` |
+| 项目名 | `bin returns!` |
+| 当前包版本 | `0.2.0` |
+| 形态 | Vite + 原生 ES Modules 纯前端应用 |
+| 部署 | GitHub Pages |
+| 核心用途 | 移动端个人 DeepSeek API 对话前端 |
 
-### 1.1 当前技术边界
+设计原则：功能必须真实可用。没有后端、视觉模型、OAuth 或账户服务时，页面必须清晰标注边界，不得伪造成已完成能力。
 
-1. 当前没有后端、数据库、账号系统或服务端密钥代理。
-2. API 请求从浏览器直接发送到配置的接口地址。
-3. 聊天记录、设置、个人资料、长期记忆、用量统计都只保存在当前浏览器本地存储中。
-4. GitHub Pages 只负责托管静态页面，不负责保存用户数据。
-5. 因为没有后端，公开分享、OAuth 连接器、真实账户额度、跨设备同步、服务端限流都尚未实现。
+### 当前技术边界
+
+1. 没有后端、数据库、账号系统或服务端 API Key 代理。
+2. 浏览器直接向配置的 DeepSeek 兼容接口发请求。
+3. 聊天记录、设置、个性化、记忆、用量统计都只保存在当前浏览器。
+4. GitHub Pages 只托管静态文件，不保存用户数据。
+5. 公开分享、跨设备同步、连接器、真实账户额度、服务端限流尚未实现。
 
 ---
 
-## 2. 启动与部署
+## 2. 运行与部署
 
-### 2.1 本地运行
+### 本地命令
 
 ```bash
 npm install
 npm run dev
-```
-
-其他命令：
-
-```bash
 npm run build
 npm run preview
 ```
 
-- `package.json` 使用 Vite `^6.1.0`。
-- 构建产物在 `dist/`。
-- 项目启用 ES Modules：`"type": "module"`。
+- 构建工具：Vite `^6.1.0`
+- Node 模块类型：ES Modules
+- 构建产物：`dist/`
 
-### 2.2 GitHub Pages
+### GitHub Pages
 
-部署工作流：`.github/workflows/deploy-pages.yml`
+工作流：`.github/workflows/deploy-pages.yml`
 
-触发规则：
-
-- 推送到 `main`。
-- GitHub Actions 安装依赖、执行 `npm run build`、上传 `dist/` 并部署。
-- Node 版本：20。
-
-首次启用时，GitHub 仓库设置中应选择：
+- 推送到 `main` 会触发构建与部署。
+- 工作流使用 Node 20。
+- 首次部署需在仓库设置中选择：
 
 ```text
-Settings → Pages → Build and deployment → GitHub Actions
+Settings → Pages → Build and deployment → Source → GitHub Actions
 ```
 
 ---
 
-## 3. 应用入口与总数据流
+## 3. 启动入口与总数据流
 
-### 3.1 启动入口
+### 启动入口
 
 ```text
 index.html
@@ -77,75 +72,75 @@ src/app/createConversationApp.js
 UI / 状态 / API / 功能模块
 ```
 
-- `index.html` 只负责加载样式、`#app` 根节点和 `src/main.js`。
-- `src/main.js` 获取 `#app` 并调用 `createConversationApp(root)`；启动失败时渲染可见错误页。
-- `src/app/createConversationApp.js` 是**应用协调器**，负责把 UI、对话、附件、设置、个性化、用量、API 请求绑定在一起。不要把大量新业务逻辑继续堆入这里；新能力优先拆到 `features/` 或独立模块。
+- `index.html`：加载样式、提供 `#app`、加载 `src/main.js`。
+- `src/main.js`：调用 `createConversationApp(root)`；启动失败时渲染错误页。
+- `src/app/createConversationApp.js`：应用协调器，负责连接 UI、对话、附件、设置、个性化、用量和 API 请求。
 
-### 3.2 一次发送消息的真实流程
+### 一次发送消息的实际流程
 
 ```text
-用户输入 / 文本附件
+输入文本 / 选择文本附件
   ↓
-附件模块读取文本并生成 attachmentContext
+附件模块读取文本，生成 attachmentContext
   ↓
-读取本地设置、个人资料、回答方式、启用记忆
+读取本地 API 设置、个人资料、回答方式、启用记忆
   ↓
-拼接系统上下文
+构建系统上下文
   ↓
-将当前用户消息写入本地对话历史
+用户消息写入本地对话历史
   ↓
-POST 到 DeepSeek 兼容 Chat Completions 接口（stream: true）
+POST Chat Completions（stream: true）
   ↓
-解析 SSE 流：reasoning_content / content / usage
+解析 SSE：reasoning_content / content / usage
   ↓
-实时更新 UI
+实时更新消息 UI
   ↓
-保存助手最终回答、用量数据、对话标题与本地历史
+保存助手回答、用量、历史标题和本地状态
 ```
 
-### 3.3 系统上下文的拼接顺序
+### 系统上下文层级
 
-`buildPersonalizedSystemPrompt()` 输出以下层级：
+`buildPersonalizedSystemPrompt()` 组装：
 
 ```text
 [基础助手规则]
-  来自“模型与 API”中的系统提示词
+  来自“模型与 API”的系统提示词
 
 [用户资料]
-  显示名称、希望称呼
+  显示名称、希望如何称呼
 
 [回答方式]
-  语言、长度、直接程度、结论优先、案例、表达禁忌、不确定性规则、额外偏好
+  语言、长度、表达风格、结论优先、案例、表达禁忌、不确定性、额外偏好
 
 [长期记忆]
-  只包含用户手动添加且已启用的记忆
+  用户手动管理且当前启用的记忆
 ```
 
-之后 API 层按以下顺序发送：
+请求顺序：
 
 ```text
-system 消息：上述完整系统上下文
+system：完整系统上下文
 ↓
-历史消息：当前对话中已保存的 user / assistant 消息
+history：当前对话历史
 ↓
-当前 user 消息：已经写入历史后，随同本轮请求发送
+user：本轮用户消息（含隐藏的文本附件上下文）
 ```
 
-### 3.4 重要兼容说明
+### 个性化兼容桥接
 
-历史请求入口早期只向个性化函数传 `preferences.snapshot.profile`。为了避免大范围重构，当前 `preferencesStore` 在快照中的 `profile` 内部兼带 `responseStyle` 与 `memories`，使旧入口仍能读取完整个性化层。
+历史请求入口早期只把 `preferences.snapshot.profile` 传入个性化函数。当前 `preferencesStore` 会在快照的 `profile` 内兼带 `responseStyle` 与 `memories`，以保证旧入口仍可读取完整个性化层。
 
-这是一层**兼容桥接**，功能可用，但后续若重构 `createConversationApp.js`，应将调用统一为：
+后续重构建议统一改为：
 
 ```js
 buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot)
 ```
 
-这样可以删除 profile 内嵌兼容数据，结构会更干净。
+然后删除 profile 内嵌兼容字段。
 
 ---
 
-## 4. 目录与文件地图
+## 4. 文件地图与组合逻辑
 
 ```text
 .
@@ -154,18 +149,13 @@ buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot)
 ├── README.md
 ├── codex.md
 ├── .github/
-│   └── workflows/
-│       └── deploy-pages.yml
+│   └── workflows/deploy-pages.yml
 └── src/
     ├── main.js
-    ├── api/
-    │   └── deepseek.js
-    ├── app/
-    │   └── createConversationApp.js
-    ├── config/
-    │   └── constants.js
-    ├── state/
-    │   └── settings.js
+    ├── api/deepseek.js
+    ├── app/createConversationApp.js
+    ├── config/constants.js
+    ├── state/settings.js
     ├── features/
     │   ├── attachments/
     │   │   ├── attachmentStore.js
@@ -178,8 +168,7 @@ buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot)
     │   │   ├── personalizationView.js
     │   │   ├── preferencesStore.js
     │   │   └── settingsNavigator.js
-    │   └── usage/
-    │       └── usageStore.js
+    │   └── usage/usageStore.js
     ├── ui/
     │   ├── icons.js
     │   ├── layout.js
@@ -193,52 +182,43 @@ buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot)
         └── personalization.css
 ```
 
-### 4.1 API 与配置
+### 模块职责
 
-| 文件 | 责任 | 连接点 |
+| 模块 | 责任 | 主要连接点 |
 |---|---|---|
-| `src/config/constants.js` | 默认接口、模型、思考模式文案、本地存储键名 | 被设置、UI、请求逻辑读取 |
-| `src/api/deepseek.js` | `fetch` 请求、SSE 解析、错误处理 | 被 `createConversationApp.js` 调用 |
-| `src/state/settings.js` | 读取、保存、校验、清除 API 设置 | 被应用协调器调用 |
+| `api/deepseek.js` | `fetch`、SSE 解析、接口错误处理 | 被应用协调器调用 |
+| `app/createConversationApp.js` | 状态编排、事件绑定、发送流程 | 应用总入口 |
+| `config/constants.js` | 默认接口、模型、思考模式、本地存储键 | 被设置与请求逻辑读取 |
+| `state/settings.js` | API 设置的读取、保存、校验、清除 | 被应用协调器调用 |
+| `features/conversations/conversationStore.js` | 对话创建、切换、删除、追加、持久化 | 协调器、历史侧栏、导出 |
+| `features/conversations/historySidebar.js` | 历史抽屉渲染 | 接收选择与删除回调 |
+| `features/attachments/attachmentStore.js` | 文本文件读取、限制、附件上下文生成 | 发送前生成 `attachmentContext` |
+| `features/attachments/attachmentView.js` | 附件托盘与消息附件元数据 | 被协调器和消息 UI 调用 |
+| `features/settings/preferencesStore.js` | 个人资料、回答方式、长期记忆、通知、系统上下文 | 请求前读取 |
+| `features/settings/personalizationView.js` | 个性化与记忆页面、记忆 CRUD、上下文预览 | 被设置导航调用 |
+| `features/settings/settingsNavigator.js` | BH 设置中心的多页面导航 | 从协调器创建 |
+| `features/settings/dataExport.js` | JSON 导出、复制对话、文本格式化 | 设置页与协调器 |
+| `features/usage/usageStore.js` | 请求数与 token 本地统计 | 从 SSE usage 更新 |
+| `ui/layout.js` | 页面外壳、抽屉、输入框、设置页 DOM | 被协调器创建 |
+| `ui/messages.js` | 消息、推理折叠、token、消息附件渲染 | 协调器调用 |
+| `ui/icons.js` | 内联 SVG 图标 | UI 与设置导航 |
 
-### 4.2 对话与附件
+### 样式职责
 
-| 文件 | 责任 | 连接点 |
-|---|---|---|
-| `features/conversations/conversationStore.js` | 本地对话创建、选择、删除、追加消息、历史持久化 | 被应用协调器和导出模块使用 |
-| `features/conversations/historySidebar.js` | 左侧对话历史抽屉渲染 | 接收对话列表与选择/删除回调 |
-| `features/attachments/attachmentStore.js` | 读取、限制、缓存待发送附件文本 | 生成 `attachmentContext`；图片只预览不发送 |
-| `features/attachments/attachmentView.js` | 输入框附件托盘、消息中的附件元数据展示 | 由协调器和消息 UI 调用 |
-
-### 4.3 设置、个性化与用量
-
-| 文件 | 责任 | 连接点 |
-|---|---|---|
-| `features/settings/settingsNavigator.js` | BH 设置中心的多页面导航 | 从 `createConversationApp.js` 创建 |
-| `features/settings/preferencesStore.js` | 个人资料、回答方式、长期记忆、通知偏好、系统上下文构建 | 请求前由协调器读取 |
-| `features/settings/personalizationView.js` | “个性化与记忆”页面：回答方式、记忆 CRUD、上下文预览 | 被设置导航调用 |
-| `features/settings/dataExport.js` | JSON 下载、复制对话、文本格式化 | 被设置中心和协调器调用 |
-| `features/usage/usageStore.js` | 本机请求数与 token 统计 | 从 SSE `usage` 更新 |
-
-### 4.4 UI 与样式
-
-| 文件 | 责任 |
+| 样式文件 | 责任 |
 |---|---|
-| `ui/layout.js` | 页面外壳、抽屉、输入框、模型/API 抽屉、全屏设置页 DOM |
-| `ui/messages.js` | 用户消息、助手消息、推理折叠区、token 元数据、消息附件渲染 |
-| `ui/icons.js` | 内联 SVG 图标集合 |
-| `styles/tokens.css` | 颜色、字体、基础变量 |
-| `styles/app.css` | 聊天主界面、输入框、附件托盘、消息样式 |
-| `styles/history.css` | 历史抽屉与侧栏动画 |
-| `styles/sheet.css` | 模型与 API 底部抽屉 |
-| `styles/settings-hub.css` | BH 打开的全屏设置中心 |
-| `styles/personalization.css` | 个性化与长期记忆页面 |
+| `tokens.css` | 颜色、字体、全局变量 |
+| `app.css` | 聊天主界面、消息、输入框、附件托盘 |
+| `history.css` | 历史抽屉与侧栏动画 |
+| `sheet.css` | 模型与 API 底部抽屉 |
+| `settings-hub.css` | BH 打开的全屏设置中心 |
+| `personalization.css` | 个性化与长期记忆页面 |
 
 ---
 
 ## 5. DeepSeek 请求配置
 
-默认值在 `src/config/constants.js`：
+默认配置位于 `src/config/constants.js`：
 
 ```text
 endpoint: https://api.deepseek.com/chat/completions
@@ -247,43 +227,39 @@ thinkingMode: high
 systemPrompt: 你是一个简洁、可靠的中文助手。
 ```
 
-界面中可选模型标识：
+页面当前配置的模型标识：
 
 ```text
 deepseek-v4-flash
 deepseek-v4-pro
 ```
 
-思考模式映射：
-
 | UI 名称 | 代码值 | 请求行为 |
-|---|---:|---|
+|---|---|---|
 | 快速 | `disabled` | `thinking: { type: "disabled" }` |
 | 深度 | `high` | `thinking: { type: "enabled" }` + `reasoning_effort: "high"` |
 | 极限 | `max` | `thinking: { type: "enabled" }` + `reasoning_effort: "max"` |
 
-### 5.1 SSE 返回处理
+### SSE 处理
 
-`deepseek.js` 解析 `data:` 行，并关注：
+`deepseek.js` 解析 `data:` 行：
 
-- `delta.reasoning_content`：显示为折叠的思考过程。
-- `delta.content`：显示为最终回答。
-- `usage`：写入本机用量统计。
+- `delta.reasoning_content`：可折叠思考过程。
+- `delta.content`：最终回答。
+- `usage`：写入本机统计。
 - `[DONE]`：流结束。
 
-### 5.2 模型标识风险
+### 重要风险
 
-代码中的模型名和请求字段是当前前端配置，并不保证所有账户、地区或未来接口版本都可用。更换模型、增加能力或遇到接口错误时，应先核对 DeepSeek 官方文档和账户实际权限，再修改配置。
+模型名、请求字段和账户可用权限可能变化。涉及 API、模型或能力改动时，必须先核对官方文档与账户实际权限。
 
 ---
 
-## 6. 本地数据与存储键
+## 6. 本地存储与数据结构
 
-### 6.1 API 设置
+### API 设置
 
-来自 `constants.js`：
-
-| 存储键 | 用途 |
+| 存储键 | 内容 |
 |---|---|
 | `bin-deepseek-api-key` | API Key |
 | `bin-deepseek-remember-api-key` | 是否长期记住 Key |
@@ -294,117 +270,114 @@ deepseek-v4-pro
 
 规则：
 
-- 勾选“在此设备记住 API Key”时，Key 放入 `localStorage`。
-- 未勾选时，Key 只放入 `sessionStorage`。
-- 其余设置保存到 `localStorage`。
-- 旧会话 Key 在符合条件时会迁移到长期存储。
+- 勾选“在此设备记住 API Key”时，Key 使用 `localStorage`。
+- 未勾选时，Key 使用 `sessionStorage`。
+- 其余设置使用 `localStorage`。
+- 旧会话 Key 在符合条件时可迁移到长期存储。
 
-### 6.2 业务数据
+### 业务数据
 
 | 存储键 | 内容 |
 |---|---|
-| `bin-conversations-v1` | 对话列表、消息、标题、推理内容、附件元数据、用于 API 的隐藏文本内容 |
+| `bin-conversations-v1` | 对话、消息、标题、推理内容、附件元数据、用于 API 的隐藏文本内容 |
 | `bin-app-preferences-v1` | 个人资料、回答方式、长期记忆、通知偏好 |
-| `bin-usage-v1` | 本机请求数、累计 tokens、思考 tokens、最近调用时间 |
+| `bin-usage-v1` | 请求数、累计 tokens、思考 tokens、最近调用时间 |
 
-### 6.3 数据导出与清除
+### 导出与清除
 
-- “导出全部本地数据”会下载 JSON，并把 API Key 替换成 `[已省略]`。
-- 当前对话可以复制或下载 JSON。
-- “删除这台设备上的全部应用数据”会清除设置、对话、个人偏好、记忆和本机用量。
-- 所有数据只属于当前浏览器、当前设备、当前站点来源；更换浏览器、无痕模式或清理站点数据会丢失。
+- 全量导出会下载 JSON，API Key 会替换为 `[已省略]`。
+- 当前对话可复制或下载 JSON。
+- 删除全部本地数据会清除设置、对话、个性化、记忆和用量。
+- 数据只属于当前浏览器、设备和站点来源；换浏览器、无痕模式或清站点数据会丢失。
 
 ---
 
 ## 7. 已实现能力
 
-### 7.1 聊天与推理
+### 聊天与推理
 
-- 多轮对话与本地历史。
-- 左上菜单打开历史抽屉。
-- 新建对话、切换对话、删除对话、清空当前对话。
+- 多轮对话、本地历史、新建、切换、删除、清空。
 - SSE 流式输出。
 - 思考过程与最终回答分开渲染。
-- 停止生成。
-- 错误提示与请求中状态。
+- 停止生成、错误提示、请求中状态。
 - 本机 token 用量统计。
 
-### 7.2 模型与设置
+### 模型与设置
 
-- 模型选择。
-- 三档思考模式。
-- 接口地址、系统提示词、API Key 可编辑。
+- 接口地址、API Key、模型、思考模式、基础系统提示词可编辑。
 - 设置自动保存。
 - BH 打开全屏设置中心。
-- 模型胶囊直达“模型与 API”抽屉。
+- 模型胶囊直达“模型与 API”。
 
-### 7.3 个性化与记忆
+### 个性化与长期记忆
 
 - 显示名称、昵称。
-- 结构化回答方式：语言、长度、表达方式、结论优先、案例优先、表达禁忌、不确定性规则、额外偏好。
-- 手动管理长期记忆：新增、编辑、启用、关闭、删除。
-- 记忆分类：身份、偏好、项目、学习、工作、投资、其他。
-- 最多 30 条记忆；每条内容最多 700 字符；注入上下文总长度上限 6,000 字符。
-- 个性化页面可预览本轮会注入的系统上下文。
-- 当前版本**不会自动从聊天内容提取记忆**，避免未经确认地记录私人信息。
+- 结构化回答方式：语言、长度、表达风格、结论优先、案例优先、表达禁忌、不确定性规则、额外偏好。
+- 记忆可新增、编辑、启用、关闭、删除。
+- 分类：身份、偏好、项目、学习、工作、投资、其他。
+- 最多 30 条记忆；每条最多 700 字符；注入上下文总长度上限 6,000 字符。
+- 页面可预览当前会注入的系统上下文。
+- 不自动从聊天中抽取记忆，避免未经确认记录私人信息。
 
-### 7.4 附件
+### 附件
 
-- 支持文本文件：`.txt`、`.md`、`.markdown`、`.csv`、`.json`、日志及常见代码文件。
+- 支持 `.txt`、`.md`、`.markdown`、`.csv`、`.json`、日志和常见代码文件。
 - 最多 4 个附件。
 - 单个文件上限 2 MB。
-- 单文件最多读取约 24,000 字符；全部文本附件总上限约 60,000 字符。
-- 文本文件会附加到本轮用户消息的 API 内容中，聊天界面只显示文件名与状态。
-- 图片可以选择和预览，但当前会被明确阻止发送：现有文本接口没有真实图片理解链路。
+- 单文件最多读取约 24,000 字符；总文本附件上限约 60,000 字符。
+- 文本内容仅作为该轮 API 内容发送；聊天 UI 展示文件名和状态。
+- 图片可选择和预览，但会明确阻止发送，因为当前接口没有真实图片理解链路。
 
 ---
 
 ## 8. 未实现能力与禁止伪造项
 
-下列能力不能仅靠当前 GitHub Pages 纯前端可靠完成：
+以下能力需要视觉模型或后端，不得只做外观然后暗示已可用：
 
-1. **图片理解**：需要视觉模型或独立多模态服务。
-2. **PDF / Office 文档结构化读取**：需要解析链路或后端处理。
-3. **联网搜索**：需要搜索服务与密钥代理。
-4. **Gmail、Google Drive、Notion 等连接器**：需要 OAuth、回调地址、服务器端令牌保存。
-5. **公开分享链接与账号体系**：需要数据库、身份认证和权限控制。
-6. **真实账户额度、账单、限额**：需要服务商账户接口或服务端安全代理。
-7. **跨设备同步**：需要后端存储。
-8. **自动长期记忆抽取**：需要明确的提取、审阅、删除机制。
+1. 图片理解。
+2. PDF / Office 文档结构化读取。
+3. 联网搜索。
+4. Gmail、Google Drive、Notion 等 OAuth 连接器。
+5. 公开分享链接、账号体系与权限控制。
+6. 真实账户额度、账单、限额。
+7. 跨设备同步。
+8. 自动长期记忆抽取。
 
-开发时不得把这些能力仅做成好看的开关或页面并暗示其已工作；页面必须标识“待接入”“需要后端”或“需要视觉模型”。
+对应页面必须明确标注“待接入”“需要后端”或“需要视觉模型”。
 
 ---
 
 ## 9. 安全规则
 
-1. API Key 不得写入代码、README、Codex、Git 历史示例、截图或前端默认配置。
-2. 当前浏览器直连模式只适合个人受信任设备。
-3. 不要把勾选“记住 API Key”的版本直接当作可安全公开给他人的产品。
-4. 真正公开部署前必须引入后端或 Edge Function：Key 放在环境变量，不由浏览器持有服务商主密钥。
-5. 后端化时还应加入登录、额度、速率限制、审计和滥用防护。
-6. 导出数据时继续遮蔽 API Key；任何新增敏感字段也必须默认遮蔽。
+1. API Key 不得写入源码、README、Codex、示例、截图或默认配置。
+2. 浏览器直连只适合个人受信任设备。
+3. 不要将勾选“记住 API Key”的版本直接作为可安全公开产品。
+4. 真正公开部署前，必须增加后端或 Edge Function，服务商主 Key 只能放在环境变量。
+5. 后端化时需加入登录、额度、限流、审计和滥用防护。
+6. 导出数据必须继续遮蔽 API Key 和未来新增的敏感字段。
 
 ---
 
-## 10. 开发规范
+## 10. 开发维护规则
 
-### 10.1 每次开始前
+### 开发前
 
-1. 阅读本文件全部内容。
-2. 确认本次需求属于：UI、状态、API、存储、个性化、附件、部署或后端能力中的哪一类。
-3. 判断是否触及“纯前端边界”。触及后端边界时，必须明确说明，不得伪造完成。
-4. 优先复用现有模块，不要把逻辑无序堆进 `createConversationApp.js`。
+- 不强制阅读 README 或 Codex。
+- 涉及不熟悉模块、数据结构、接口格式、部署或历史决策时，应按需查阅 Codex 对应章节。
+- 触及纯前端边界时，必须明确说明限制，不得伪造实现。
+- 新功能优先拆入对应 `features/` 模块，不要无序堆进 `createConversationApp.js`。
 
-### 10.2 每次修改后
+### 开发后（强制）
 
-1. 更新受影响章节：能力、数据结构、文件地图、边界或安全规则。
-2. 在“版本更新记录”末尾追加一条，包含日期、版本号或阶段名、改动摘要、涉及文件、已知限制。
-3. 若更改请求格式、存储键、数据迁移逻辑、部署方式或 API Key 行为，必须写清楚迁移与兼容影响。
-4. 若项目增加新模块，必须写入第 4 节文件地图和对应连接点。
-5. 若发现代码与本文不一致，优先修正文档或代码，不能长期保留冲突描述。
+每次开发、修改、调试或结构调整完成后，必须：
 
-### 10.3 建议的版本记录模板
+1. 更新 Codex 中受影响章节：能力、数据结构、文件地图、连接点、边界、安全或部署。
+2. 在本文末尾“版本更新记录”追加一条版本概述。
+3. 发生请求格式、存储键、迁移逻辑、部署方式或 API Key 行为变化时，写清迁移与兼容影响。
+4. 新增模块时，补充文件地图和连接点。
+5. 发现代码与 Codex 不一致时，及时修正代码或文档，不能长期保留冲突描述。
+
+### 版本记录模板
 
 ```markdown
 ### YYYY-MM-DD · vX.Y.Z · 简短标题
@@ -418,21 +391,25 @@ deepseek-v4-pro
 
 ## 11. 下一阶段建议
 
-按价值与架构成本排序：
-
-1. **清理个性化兼容桥接**：让请求入口直接接收完整 `preferences.snapshot`。
-2. **给长期记忆增加检索规则**：先按当前问题关键词筛选，而不是将全部启用记忆注入。
-3. **Markdown / 代码块渲染**：提升回答可读性，但要注意 XSS 安全。
-4. **图片理解方案选择**：确认是接第三方视觉 API，还是部署自有多模态服务；再做真实上传链路。
-5. **后端 / Edge Function**：用于保护共享 Key、提供外部搜索、连接器、账户和跨端数据。
-6. **项目模式**：为“投资”“游戏开发”“代码项目”等建立可启用的预设上下文包，但仍应允许用户查看与关闭。
+1. 清理个性化兼容桥接：请求入口直接接收完整 `preferences.snapshot`。
+2. 长期记忆检索：按当前问题筛选相关记忆，避免全部注入。
+3. Markdown 与代码块安全渲染。
+4. 确定图片理解方案：兼容视觉 API 或自建多模态服务。
+5. 后端 / Edge Function：保护共享 Key、搜索、连接器、账号、跨设备数据。
+6. 项目模式：投资、游戏开发、代码项目等可开关预设上下文包。
 
 ---
 
 ## 12. 版本更新记录
 
 ### 2026-06-22 · v0.2.1 · 建立项目 Codex
-- 改动：新增 `codex.md`，系统化记录当前项目架构、真实功能、数据流、存储键、请求上下文、文件组合逻辑、部署方式、安全边界与维护规则。
+- 改动：新增 `codex.md`，系统化记录项目架构、功能、数据流、存储、部署、安全边界与维护规则。
 - 涉及文件：`codex.md`、`README.md`。
-- 数据/接口影响：无运行时数据结构变化；文档明确了当前本地存储和个性化注入逻辑。
-- 已知限制：本文反映当前纯前端版本；未来增加后端、视觉模型、连接器、自动记忆或跨设备同步时，必须同步更新。
+- 数据/接口影响：无运行时数据结构变化。
+- 已知限制：当前为纯前端版本，后端、视觉模型、连接器、自动记忆和跨设备同步尚未实现。
+
+### 2026-06-22 · v0.2.2 · 调整 Codex 维护规则
+- 改动：移除“每次开发前必须阅读 README 或 Codex”的强制要求；保留并明确“每次开发完成后必须更新 Codex 相关章节，并在末尾追加版本更新概述”。
+- 涉及文件：`README.md`、`codex.md`。
+- 数据/接口影响：无运行时数据结构变化。
+- 已知限制：Codex 的准确性依赖每次开发完成后的同步维护。
