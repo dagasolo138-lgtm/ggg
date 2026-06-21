@@ -30,9 +30,11 @@ export function renderShell(root) {
 
         <div class="composer-wrap">
           <form id="composer" class="composer-card">
+            <input id="attachment-input" type="file" multiple hidden accept="image/*,.txt,.md,.markdown,.csv,.json,.log,.js,.jsx,.ts,.tsx,.py,.html,.css,.xml,.yml,.yaml,.sql,.java,.c,.cpp,.h,.sh" />
+            <div id="attachment-tray" class="attachment-tray" hidden aria-live="polite"></div>
             <textarea id="prompt" rows="1" placeholder="Chat with DeepSeek" autocomplete="off"></textarea>
             <div class="composer-toolbar">
-              <button class="circle-button dark-button" type="button" aria-label="更多功能">${icon("plus")}</button>
+              <button id="attach-button" class="circle-button dark-button" type="button" aria-label="添加附件">${icon("plus")}</button>
               <button id="model-pill" class="model-pill" type="button"><span id="model-pill-text"></span></button>
               <div class="composer-actions">
                 <button id="stop-button" class="circle-button stop-button" type="button" hidden aria-label="停止生成">${icon("stop")}</button>
@@ -113,6 +115,9 @@ export function renderShell(root) {
     emptyState: root.querySelector("#empty-state"),
     composer: root.querySelector("#composer"),
     prompt: root.querySelector("#prompt"),
+    attachmentInput: root.querySelector("#attachment-input"),
+    attachmentTray: root.querySelector("#attachment-tray"),
+    attachButton: root.querySelector("#attach-button"),
     sendButton: root.querySelector("#send-button"),
     stopButton: root.querySelector("#stop-button"),
     modelPill: root.querySelector("#model-pill"),
