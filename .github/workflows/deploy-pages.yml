@@ -27,17 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build site
-        shell: bash
-        run: |
-          set +e
-          npm run build > build.log 2>&1
-          status=$?
-          cat build.log
-          if [ "$status" -ne 0 ]; then
-            details="$(tail -n 40 build.log | tr '\n' ' ' | sed 's/%/%25/g')"
-            echo "::error title=Vite build failed::$details"
-            exit "$status"
-          fi
+        run: npm run build
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
@@ -50,7 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
