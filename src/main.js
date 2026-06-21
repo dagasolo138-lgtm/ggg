@@ -1,7 +1,3 @@
-import "./styles/tokens.css";
-import "./styles/app.css";
-import "./styles/sheet.css";
-import "./styles/history.css";
 import { createConversationApp } from "./app/createConversationApp.js";
 
 const root = document.querySelector("#app");
