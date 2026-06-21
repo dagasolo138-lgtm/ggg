@@ -1,10 +1,14 @@
-import { createApp } from "./app/createApp.js";
+import "./styles/tokens.css";
+import "./styles/app.css";
+import "./styles/sheet.css";
+import "./styles/history.css";
+import { createConversationApp } from "./app/createConversationApp.js";
 
 const root = document.querySelector("#app");
 
 try {
   if (!root) throw new Error("找不到应用根节点 #app。");
-  createApp(root);
+  createConversationApp(root);
 } catch (error) {
   console.error("应用启动失败：", error);
   root.innerHTML = `
