@@ -75,9 +75,11 @@ export function createPreferencesStore() {
 
 export function buildPersonalizedSystemPrompt(basePrompt, profile) {
   const sections = [basePrompt.trim()];
+  const displayName = profile.displayName.trim();
   const nickname = profile.nickname.trim();
   const customInstructions = profile.customInstructions.trim();
 
+  if (displayName) sections.push(`用户的显示名称：${displayName}。`);
   if (nickname) sections.push(`用户希望被称呼为：${nickname}。`);
   if (customInstructions) sections.push(`用户的额外回复偏好：${customInstructions}`);
 
