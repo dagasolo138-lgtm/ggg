@@ -6,6 +6,10 @@ function formatUsage(usage) {
   return reasoning ? `本次 ${usage.total_tokens} tokens · 思考 ${reasoning} tokens` : `本次 ${usage.total_tokens} tokens`;
 }
 
+function hasVisibleText(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function createReasoningBlock(mode, reasoningContent, isStreaming) {
   const details = document.createElement("details");
   details.className = "reasoning-details";
@@ -19,7 +23,7 @@ function createReasoningBlock(mode, reasoningContent, isStreaming) {
   summary.append(label, status);
 
   const pre = document.createElement("pre");
-  pre.textContent = reasoningContent || (isStreaming ? "正在思考…" : "");
+  pre.textContent = hasVisibleText(reasoningContent) ? reasoningContent : (isStreaming ? "正在思考…" : "");
   details.append(summary, pre);
   return { details, pre, status };
 }
@@ -35,24 +39,32 @@ export function renderMessage(container, {
   reasoningContent = "",
   isStreaming = false,
 }) {
+  const isUser = role === "user";
   const article = document.createElement("article");
-  article.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
-
-  const avatar = document.createElement("div");
-  avatar.className = "message-avatar";
-  avatar.textContent = role === "user" ? "你" : "D";
+  article.className = `message ${isUser ? "user-message" : "assistant-message"}`;
 
   const box = document.createElement("div");
   box.className = "message-content";
 
-  const roleLabel = document.createElement("span");
-  roleLabel.className = "message-role";
-  roleLabel.textContent = role === "user" ? "YOU" : "DEEPSEEK";
-  box.append(roleLabel);
+  if (!isUser) {
+    const roleLabel = document.createElement("span");
+    roleLabel.className = "message-role";
+    roleLabel.textContent = "DEEPSEEK";
+    box.append(roleLabel);
+  }
 
-  const view = { article, answer: null, reasoning: null, reasoningStatus: null, reasoningDetails: null, meta: null };
+  const view = {
+    article,
+    answer: null,
+    reasoning: null,
+    reasoningStatus: null,
+    reasoningDetails: null,
+    meta: null,
+    hasReasoningContent: hasVisibleText(reasoningContent),
+  };
 
-  if (role === "assistant" && (mode !== "disabled" || reasoningContent)) {
+  const shouldRenderReasoning = !isUser && ((isStreaming && mode !== "disabled") || hasVisibleText(reasoningContent));
+  if (shouldRenderReasoning) {
     const reasoning = createReasoningBlock(mode === "disabled" ? "high" : mode, reasoningContent, isStreaming);
     box.append(reasoning.details);
     view.reasoning = reasoning.pre;
@@ -67,14 +79,22 @@ export function renderMessage(container, {
   box.append(answer);
   view.answer = answer;
 
-  if (role === "assistant") {
+  if (!isUser) {
     const meta = document.createElement("p");
     meta.className = "message-meta";
     box.append(meta);
     view.meta = meta;
   }
 
-  article.append(avatar, box);
+  if (isUser) {
+    article.append(box);
+  } else {
+    const avatar = document.createElement("div");
+    avatar.className = "message-avatar";
+    avatar.textContent = "D";
+    article.append(avatar, box);
+  }
+
   container.append(article);
   scrollToEnd(container);
   return view;
@@ -94,16 +114,23 @@ export function renderConversation(container, messages) {
 }
 
 export function updateStreamingMessage(view, { content, reasoningContent, usage, finishReason }) {
-  if (reasoningContent && view.reasoning) {
+  if (hasVisibleText(reasoningContent) && view.reasoning) {
     const wasPlaceholder = view.reasoning.textContent === "正在思考…";
     view.reasoning.textContent = `${wasPlaceholder ? "" : view.reasoning.textContent}${reasoningContent}`;
+    view.hasReasoningContent = true;
     view.reasoningStatus.textContent = "思考中";
   }
+
   if (content) {
-    view.answer.textContent += content;
+    if (view.answer.classList.contains("answer-pending")) {
+      view.answer.textContent = content;
+    } else {
+      view.answer.textContent += content;
+    }
     view.answer.classList.remove("answer-pending");
-    if (view.reasoningStatus) view.reasoningStatus.textContent = "已完成";
+    if (view.reasoningStatus) view.reasoningStatus.textContent = "整理回答中";
   }
+
   if (usage && view.meta) view.meta.textContent = formatUsage(usage);
   if (finishReason && finishReason !== "stop" && view.meta) {
     view.meta.textContent = `${view.meta.textContent}${view.meta.textContent ? " · " : ""}${finishReason}`;
@@ -113,7 +140,7 @@ export function updateStreamingMessage(view, { content, reasoningContent, usage,
 export function finalizeStreamingMessage(view, { hasReasoning }) {
   view.answer.classList.remove("answer-pending");
   if (view.reasoningDetails) {
-    if (hasReasoning) {
+    if (hasReasoning && view.hasReasoningContent) {
       view.reasoningStatus.textContent = "思考完成";
       view.reasoningDetails.open = false;
     } else {
