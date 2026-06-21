@@ -2,6 +2,7 @@ import { streamCompletion } from "../api/deepseek.js";
 import { MODE_LABELS } from "../config/constants.js";
 import { createAttachmentStore } from "../features/attachments/attachmentStore.js";
 import { renderAttachmentTray } from "../features/attachments/attachmentView.js";
+import { createConversationActions } from "../features/conversations/conversationActions.js";
 import { createConversationStore } from "../features/conversations/conversationStore.js";
 import { renderHistorySidebar } from "../features/conversations/historySidebar.js";
 import { conversationAsText, copyText, downloadJson } from "../features/settings/dataExport.js";
@@ -34,6 +35,7 @@ export function createConversationApp(root) {
   let requestId = 0;
   let saveStatusTimer = null;
   let settingsNavigator;
+  let conversationActions;
 
   function cancelActiveRequest() {
     requestId += 1;
@@ -47,7 +49,9 @@ export function createConversationApp(root) {
   }
 
   function syncEmpty() {
-    ui.emptyState.classList.toggle("is-hidden", conversations.activeConversation.messages.length > 0);
+    const conversation = conversations.activeConversation;
+    ui.emptyState.classList.toggle("is-hidden", conversation.messages.length > 0);
+    conversationActions?.sync(conversation, Boolean(controller));
   }
 
   function showError(message = "") {
@@ -68,6 +72,7 @@ export function createConversationApp(root) {
     ui.stopButton.hidden = !active;
     ui.attachButton.disabled = active;
     ui.composer.classList.toggle("is-sending", active);
+    conversationActions?.sync(conversations.activeConversation, active);
   }
 
   function renderAttachments() {
@@ -94,6 +99,7 @@ export function createConversationApp(root) {
   }
 
   function openDrawer() {
+    conversationActions?.closeMenu();
     ui.shell.classList.add("drawer-open");
     ui.historyDrawer.setAttribute("aria-hidden", "false");
     ui.drawerBackdrop.hidden = false;
@@ -106,6 +112,7 @@ export function createConversationApp(root) {
   }
 
   function openConnectionSheet() {
+    conversationActions?.closeMenu();
     closeDrawer();
     ui.sheet.setAttribute("aria-hidden", "false");
     ui.sheet.classList.add("is-open");
@@ -187,6 +194,45 @@ export function createConversationApp(root) {
     renderCurrentConversation();
     showError();
     ui.prompt.focus();
+  }
+
+  function renameCurrentConversation(title) {
+    conversations.rename(conversations.activeId, title);
+    renderCurrentConversation();
+  }
+
+  function toggleCurrentConversationStar() {
+    conversations.toggleStar(conversations.activeId);
+    renderCurrentConversation();
+  }
+
+  async function shareCurrentConversation() {
+    const conversation = conversations.activeConversation;
+    if (!conversation.messages.length) return;
+    const text = conversationAsText(conversation);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: conversation.title, text });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await copyText(text);
+      window.alert("当前对话已复制，可直接粘贴分享。");
+    } catch {
+      window.alert("分享不可用。请使用设置中的“下载当前对话”。");
+    }
+  }
+
+  function deleteCurrentConversation() {
+    const conversation = conversations.activeConversation;
+    if (!conversation.messages.length) return;
+    if (!window.confirm(`删除“${conversation.title}”？此操作无法恢复。`)) return;
+    clearCurrentConversation();
   }
 
   function autoGrow() {
@@ -271,7 +317,7 @@ export function createConversationApp(root) {
     const attachmentContext = attachments.buildTextContext();
     const requestSettings = {
       ...settings,
-      systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot.profile),
+      systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot),
     };
     const apiPrompt = `${prompt}${attachmentContext}`;
 
@@ -353,10 +399,21 @@ export function createConversationApp(root) {
     }
   }
 
+  conversationActions = createConversationActions({
+    ui,
+    getConversation: () => conversations.activeConversation,
+    onNewConversation: startNewConversation,
+    onShare: shareCurrentConversation,
+    onToggleStar: toggleCurrentConversationStar,
+    onRename: renameCurrentConversation,
+    onDelete: deleteCurrentConversation,
+  });
+
   settingsNavigator = createSettingsNavigator({
     ui,
     preferences,
     usage,
+    getSystemPrompt: () => settings.systemPrompt,
     getConversationSnapshot: () => conversations.activeConversation,
     getConversationCount: () => conversations.list().length,
     onOpenConnection: () => {
@@ -392,7 +449,6 @@ export function createConversationApp(root) {
   ui.closeSettings.addEventListener("click", closeConnectionSheet);
   ui.backdrop.addEventListener("click", closeConnectionSheet);
   ui.modelPill.addEventListener("click", openConnectionSheet);
-  ui.clearChat.addEventListener("click", clearCurrentConversation);
   ui.attachButton.addEventListener("click", () => ui.attachmentInput.click());
   ui.attachmentInput.addEventListener("change", async (event) => {
     if (event.target.files?.length) await addAttachments(event.target.files);
@@ -428,6 +484,8 @@ export function createConversationApp(root) {
       closeDrawer();
       closeConnectionSheet();
       settingsNavigator.close();
+      conversationActions.closeMenu();
+      conversationActions.closeRenameDialog();
     }
   });
 }
