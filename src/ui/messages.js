@@ -57,13 +57,6 @@ export function renderMessage(container, {
   const box = document.createElement("div");
   box.className = "message-content";
 
-  if (!isUser) {
-    const roleLabel = document.createElement("span");
-    roleLabel.className = "message-role";
-    roleLabel.textContent = "DEEPSEEK";
-    box.append(roleLabel);
-  }
-
   const view = {
     article,
     box,
@@ -88,14 +81,12 @@ export function renderMessage(container, {
 
   const answer = document.createElement("p");
   answer.className = "answer-text";
-  answer.textContent = content || (isStreaming ? (mode === "disabled" ? "正在生成…" : "等待最终回答…") : "");
+  answer.textContent = content || (isStreaming ? "生成中…" : "");
   if (isStreaming && !content) answer.classList.add("answer-pending");
   box.append(answer);
   view.answer = answer;
 
-  if (!isUser && artifactCandidates.length) {
-    attachArtifactCandidates(view, artifactCandidates, onOpenArtifact);
-  }
+  if (!isUser && artifactCandidates.length) attachArtifactCandidates(view, artifactCandidates, onOpenArtifact);
 
   if (!isUser) {
     const meta = document.createElement("p");
