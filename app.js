@@ -6,11 +6,7 @@ const STORAGE_KEYS = {
   systemPrompt: "deepseek-playground-system-prompt",
 };
 
-const MODE_LABELS = {
-  disabled: "快速",
-  high: "深度",
-  max: "极限",
-};
+const MODE_LABELS = { disabled: "快速", high: "深度", max: "极限" };
 
 const elements = {
   apiKey: document.querySelector("#api-key"),
@@ -34,13 +30,15 @@ const elements = {
 let conversation = [];
 let isSending = false;
 let activeController = null;
+let generationId = 0;
 
 function getThinkingMode() {
   return elements.thinkingModes.find((input) => input.checked)?.value || "high";
 }
 
 function setThinkingMode(mode) {
-  const selected = elements.thinkingModes.find((input) => input.value === mode) || elements.thinkingModes.find((input) => input.value === "high");
+  const selected = elements.thinkingModes.find((input) => input.value === mode)
+    || elements.thinkingModes.find((input) => input.value === "high");
   if (selected) selected.checked = true;
 }
 
@@ -104,6 +102,14 @@ function createReasoningBlock(mode, isStreaming) {
   return { details, status, text };
 }
 
+function formatUsage(usage) {
+  if (!usage?.total_tokens) return "";
+  const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens;
+  return reasoningTokens
+    ? `本次 ${usage.total_tokens} tokens · 思考 ${reasoningTokens} tokens`
+    : `本次 ${usage.total_tokens} tokens`;
+}
+
 function createMessageElement({ role, content = "", reasoningContent = "", mode = "disabled", isStreaming = false, usage = null }) {
   const article = document.createElement("article");
   article.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
@@ -120,7 +126,14 @@ function createMessageElement({ role, content = "", reasoningContent = "", mode 
   label.textContent = role === "user" ? "YOU" : "DEEPSEEK";
   box.append(label);
 
-  const refs = { article, answerText: null, reasoningDetails: null, reasoningText: null, reasoningStatus: null, meta: null };
+  const refs = {
+    article,
+    answerText: null,
+    reasoningDetails: null,
+    reasoningText: null,
+    reasoningStatus: null,
+    meta: null,
+  };
 
   if (role === "assistant" && mode !== "disabled") {
     const reasoning = createReasoningBlock(mode, isStreaming);
@@ -145,7 +158,7 @@ function createMessageElement({ role, content = "", reasoningContent = "", mode 
   if (role === "assistant") {
     const meta = document.createElement("p");
     meta.className = "message-meta";
-    if (usage) meta.textContent = formatUsage(usage);
+    meta.textContent = usage ? formatUsage(usage) : "";
     box.append(meta);
     refs.meta = meta;
   }
@@ -161,32 +174,27 @@ function appendMessage(message) {
   return refs;
 }
 
-function formatUsage(usage) {
-  if (!usage?.total_tokens) return "";
-  const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens;
-  return reasoningTokens ? `本次 ${usage.total_tokens} tokens · 思考 ${reasoningTokens} tokens` : `本次 ${usage.total_tokens} tokens`;
-}
-
 function autoGrowPrompt() {
   elements.prompt.style.height = "auto";
   elements.prompt.style.height = `${Math.min(elements.prompt.scrollHeight, 180)}px`;
-}
-
-function clearConversation() {
-  if (isSending) activeController?.abort();
-  conversation = [];
-  elements.messages.replaceChildren();
-  appendMessage({
-    role: "assistant",
-    content: "对话已清空。你想让 DeepSeek 帮你做什么？",
-  });
-  showError("");
 }
 
 function setSendingState(sending) {
   isSending = sending;
   elements.sendButton.disabled = sending;
   elements.stopButton.hidden = !sending;
+}
+
+function clearConversation() {
+  generationId += 1;
+  activeController?.abort();
+  activeController = null;
+  setSendingState(false);
+  conversation = [];
+  elements.messages.replaceChildren();
+  appendMessage({ role: "assistant", content: "对话已清空。你想让 DeepSeek 帮你做什么？" });
+  showError("");
+  elements.prompt.focus();
 }
 
 function getApiError(data, fallback) {
@@ -197,11 +205,7 @@ function getApiError(data, fallback) {
 }
 
 function buildApiMessages(systemPrompt) {
-  const history = conversation.map((message) => ({
-    role: message.role,
-    content: message.content,
-  }));
-
+  const history = conversation.map((message) => ({ role: message.role, content: message.content }));
   return [
     ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
     ...history,
@@ -229,7 +233,7 @@ function processSseEvent(rawEvent, onChunk) {
   });
 }
 
-async function requestStream({ onChunk }) {
+async function requestStream({ onChunk, signal }) {
   const apiKey = elements.apiKey.value.trim();
   const endpoint = elements.endpoint.value.trim();
   const model = elements.model.value;
@@ -247,7 +251,6 @@ async function requestStream({ onChunk }) {
     stream: true,
     stream_options: { include_usage: true },
   };
-
   if (thinkingMode !== "disabled") body.reasoning_effort = thinkingMode;
 
   let response;
@@ -259,7 +262,7 @@ async function requestStream({ onChunk }) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: activeController?.signal,
+      signal,
     });
   } catch (error) {
     if (error?.name === "AbortError") throw error;
@@ -271,7 +274,7 @@ async function requestStream({ onChunk }) {
     try {
       data = await response.json();
     } catch {
-      // The status code is still useful when the gateway did not return JSON.
+      // The HTTP status still gives a useful failure signal.
     }
     throw new Error(getApiError(data, `接口请求失败（HTTP ${response.status}）。`));
   }
@@ -291,16 +294,12 @@ async function requestStream({ onChunk }) {
       }
       return;
     }
-
-    if (line.startsWith("data:")) {
-      eventLines.push(line.slice(5).trimStart());
-    }
+    if (line.startsWith("data:")) eventLines.push(line.slice(5).trimStart());
   };
 
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
-
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split(/\r?\n/);
     buffer = lines.pop() || "";
@@ -321,21 +320,18 @@ async function handleSubmit(event) {
 
   saveSettings();
   const thinkingMode = getThinkingMode();
+  const requestId = ++generationId;
+  const controller = new AbortController();
+  activeController = controller;
+
   conversation.push({ role: "user", content: userText });
   appendMessage({ role: "user", content: userText });
-
   elements.prompt.value = "";
   autoGrowPrompt();
   showError("");
-  activeController = new AbortController();
   setSendingState(true);
 
-  const responseView = appendMessage({
-    role: "assistant",
-    mode: thinkingMode,
-    isStreaming: true,
-  });
-
+  const responseView = appendMessage({ role: "assistant", mode: thinkingMode, isStreaming: true });
   let finalContent = "";
   let reasoningContent = "";
   let usage = null;
@@ -343,7 +339,10 @@ async function handleSubmit(event) {
 
   try {
     await requestStream({
+      signal: controller.signal,
       onChunk(chunk) {
+        if (requestId !== generationId) return;
+
         if (chunk.reasoningContent) {
           reasoningContent += chunk.reasoningContent;
           if (responseView.reasoningText) {
@@ -365,9 +364,8 @@ async function handleSubmit(event) {
       },
     });
 
-    if (!finalContent.trim()) {
-      throw new Error("接口没有返回最终回答。请检查模型权限、内容限制或系统提示词。");
-    }
+    if (requestId !== generationId) return;
+    if (!finalContent.trim()) throw new Error("接口没有返回最终回答。请检查模型权限、内容限制或系统提示词。");
 
     conversation.push({
       role: "assistant",
@@ -389,9 +387,10 @@ async function handleSubmit(event) {
       responseView.meta.textContent = `${formatUsage(usage)}${finishReason && finishReason !== "stop" ? ` · ${finishReason}` : ""}`;
     }
   } catch (error) {
+    if (requestId !== generationId) return;
+
     const wasAborted = error?.name === "AbortError";
     const hasPartialOutput = Boolean(finalContent || reasoningContent);
-
     conversation.pop();
 
     if (hasPartialOutput) {
@@ -405,18 +404,15 @@ async function handleSubmit(event) {
       responseView.article.remove();
     }
 
-    if (wasAborted) {
-      showError("已停止生成。上一条消息已放回输入框，可以修改后重试。");
-    } else {
-      showError(error instanceof Error ? error.message : "请求失败，请稍后再试。");
-    }
-
+    showError(wasAborted ? "已停止生成。上一条消息已放回输入框，可以修改后重试。" : error instanceof Error ? error.message : "请求失败，请稍后再试。");
     elements.prompt.value = userText;
     autoGrowPrompt();
   } finally {
-    activeController = null;
-    setSendingState(false);
-    elements.prompt.focus();
+    if (requestId === generationId) {
+      activeController = null;
+      setSendingState(false);
+      elements.prompt.focus();
+    }
   }
 }
 
