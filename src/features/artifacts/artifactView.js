@@ -8,6 +8,13 @@ function element(tag, className = "", text = "") {
   return node;
 }
 
+function iconElement(name) {
+  const wrap = document.createElement("span");
+  wrap.className = "artifact-icon-wrap";
+  wrap.innerHTML = icon(name);
+  return wrap;
+}
+
 function formatDate(timestamp) {
   if (!timestamp) return "";
   return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp));
@@ -62,14 +69,18 @@ export function renderArtifactLaunchers(container, candidates, onOpenCandidate) 
   if (!candidates.length) return;
 
   const wrap = element("div", "artifact-launchers");
-  const heading = element("p", "artifact-launchers-title", "可创建 Artifact");
-  wrap.append(heading);
+  wrap.append(element("p", "artifact-launchers-title", "可创建 Artifact"));
 
   candidates.forEach((candidate) => {
     const action = document.createElement("button");
     action.type = "button";
     action.className = "artifact-launcher";
-    action.innerHTML = `${icon("artifact")}<span><strong>${candidate.title}</strong><small>${getArtifactTypeConfig(candidate.type).label} · 创建并预览</small></span>${icon("chevron")}`;
+    const copy = element("span", "artifact-launcher-copy");
+    copy.append(
+      element("strong", "", candidate.title),
+      element("small", "", `${getArtifactTypeConfig(candidate.type).label} · 创建并预览`),
+    );
+    action.append(iconElement("artifact"), copy, iconElement("chevron"));
     action.addEventListener("click", () => onOpenCandidate(candidate));
     wrap.append(action);
   });
@@ -94,7 +105,11 @@ export function renderArtifactWorkspace(root, {
 
   if (!artifacts.length) {
     const empty = element("section", "artifact-empty");
-    empty.innerHTML = `${icon("artifact")}<h3>还没有 Artifact</h3><p>当 DeepSeek 回答里包含 HTML、SVG、Markdown 或 JSON 代码块时，消息下方会出现“创建并预览”。</p>`;
+    empty.append(
+      iconElement("artifact"),
+      element("h3", "", "还没有 Artifact"),
+      element("p", "", "当 DeepSeek 回答里包含 HTML、SVG、Markdown 或 JSON 代码块时，消息下方会出现“创建并预览”。"),
+    );
     root.append(empty);
     return;
   }
@@ -104,7 +119,12 @@ export function renderArtifactWorkspace(root, {
     const item = document.createElement("button");
     item.type = "button";
     item.className = `artifact-library-item${artifact.id === activeId ? " is-active" : ""}`;
-    item.innerHTML = `${icon("artifact")}<span><strong>${artifact.title}</strong><small>${getArtifactTypeConfig(artifact.type).label} · ${artifact.versions.length} 个版本</small></span>`;
+    const copy = element("span", "artifact-library-copy");
+    copy.append(
+      element("strong", "", artifact.title),
+      element("small", "", `${getArtifactTypeConfig(artifact.type).label} · ${artifact.versions.length} 个版本`),
+    );
+    item.append(iconElement("artifact"), copy);
     item.addEventListener("click", () => onSelect(artifact.id));
     list.append(item);
   });
@@ -172,10 +192,9 @@ export function renderArtifactWorkspace(root, {
   } else {
     const preview = element("div", "artifact-preview");
     renderPreview(preview, artifact);
-    const note = element("p", "artifact-safety-note", artifact.type === "html"
+    workspace.append(preview, element("p", "artifact-safety-note", artifact.type === "html"
       ? "HTML 在隔离 iframe 中运行，不能访问聊天页面或本地数据。"
-      : "内容只保存在当前浏览器；可复制、下载或手动保存新版本。");
-    workspace.append(preview, note);
+      : "内容只保存在当前浏览器；可复制、下载或手动保存新版本。"));
   }
 
   root.append(list, workspace);
