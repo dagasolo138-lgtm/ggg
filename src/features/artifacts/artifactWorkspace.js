@@ -103,7 +103,7 @@ export function createArtifactWorkspace({ ui, store, getConversationId, onError 
         if (!version) return;
         try {
           await copyText(version.content);
-          onError?.("Artifact 源码已复制。");
+          window.alert("Artifact 源码已复制。");
         } catch {
           onError?.("复制失败，请使用下载。");
         }
