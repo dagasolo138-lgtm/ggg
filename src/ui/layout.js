@@ -17,7 +17,20 @@ export function renderShell(root) {
       <div id="app-frame" class="app-frame">
         <header class="topbar">
           <button id="open-history" class="circle-button ghost-button" type="button" aria-label="打开对话历史">${icon("menu")}</button>
-          <button id="clear-chat" class="circle-button ghost-button" type="button" aria-label="清空当前对话">${icon("clear")}</button>
+
+          <div id="conversation-actions" class="conversation-actions" hidden>
+            <button id="conversation-new-button" class="conversation-action-button conversation-new-button" type="button" aria-label="新建对话">${icon("plus")}</button>
+            <span class="conversation-action-divider" aria-hidden="true"></span>
+            <button id="conversation-menu-trigger" class="conversation-action-button" type="button" aria-label="当前对话更多操作" aria-expanded="false">${icon("more")}</button>
+
+            <div id="conversation-menu" class="conversation-menu" hidden role="menu" aria-label="当前对话操作">
+              <p class="conversation-menu-label">当前对话</p>
+              <button id="conversation-share" class="conversation-menu-item" type="button" role="menuitem">${icon("share")}<span>分享</span></button>
+              <button id="conversation-star" class="conversation-menu-item" type="button" role="menuitem">${icon("star")}<span id="conversation-star-label">收藏</span></button>
+              <button id="conversation-rename" class="conversation-menu-item" type="button" role="menuitem">${icon("edit")}<span>重命名</span></button>
+              <button id="conversation-delete" class="conversation-menu-item danger" type="button" role="menuitem">${icon("trash")}<span>删除</span></button>
+            </div>
+          </div>
         </header>
 
         <main class="stage">
@@ -89,6 +102,19 @@ export function renderShell(root) {
         </header>
         <main id="settings-hub-content" class="settings-hub-content"></main>
       </aside>
+
+      <div id="rename-dialog" class="rename-dialog" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="rename-dialog-title">
+        <form id="rename-dialog-form" class="rename-dialog-card">
+          <h2 id="rename-dialog-title">重命名对话</h2>
+          <p>名称只保存在当前浏览器。</p>
+          <input id="rename-title-input" type="text" maxlength="80" autocomplete="off" placeholder="输入对话名称" />
+          <p id="rename-dialog-error" class="rename-dialog-error" role="alert"></p>
+          <div class="rename-dialog-actions">
+            <button id="rename-dialog-cancel" type="button" class="rename-cancel-button">取消</button>
+            <button type="submit" class="rename-confirm-button">保存</button>
+          </div>
+        </form>
+      </div>
     </div>
   `;
 
@@ -96,6 +122,21 @@ export function renderShell(root) {
     shell: root.querySelector(".app-shell"),
     frame: root.querySelector("#app-frame"),
     openHistory: root.querySelector("#open-history"),
+    conversationActions: root.querySelector("#conversation-actions"),
+    conversationNewButton: root.querySelector("#conversation-new-button"),
+    conversationMenuTrigger: root.querySelector("#conversation-menu-trigger"),
+    conversationMenu: root.querySelector("#conversation-menu"),
+    conversationShare: root.querySelector("#conversation-share"),
+    conversationStar: root.querySelector("#conversation-star"),
+    conversationStarLabel: root.querySelector("#conversation-star-label"),
+    conversationStarIcon: root.querySelector("#conversation-star .icon"),
+    conversationRename: root.querySelector("#conversation-rename"),
+    conversationDelete: root.querySelector("#conversation-delete"),
+    renameDialog: root.querySelector("#rename-dialog"),
+    renameDialogForm: root.querySelector("#rename-dialog-form"),
+    renameTitleInput: root.querySelector("#rename-title-input"),
+    renameDialogError: root.querySelector("#rename-dialog-error"),
+    renameDialogCancel: root.querySelector("#rename-dialog-cancel"),
     historyDrawer: root.querySelector("#history-drawer"),
     historyList: root.querySelector("#history-list"),
     drawerBackdrop: root.querySelector("#drawer-backdrop"),
@@ -110,7 +151,6 @@ export function renderShell(root) {
     closeSettings: root.querySelector("#close-settings"),
     sheet: root.querySelector("#settings-sheet"),
     backdrop: root.querySelector("#sheet-backdrop"),
-    clearChat: root.querySelector("#clear-chat"),
     messages: root.querySelector("#messages"),
     emptyState: root.querySelector("#empty-state"),
     composer: root.querySelector("#composer"),
