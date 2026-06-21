@@ -16,6 +16,7 @@ export function createConversationApp(root) {
   let settings = loadSettings();
   let controller = null;
   let requestId = 0;
+  let saveStatusTimer = null;
 
   function cancelActiveRequest() {
     requestId += 1;
@@ -34,6 +35,14 @@ export function createConversationApp(root) {
 
   function showError(message = "") {
     ui.error.textContent = message;
+  }
+
+  function showSaveStatus(message = "已自动保存") {
+    ui.settingsSaveStatus.textContent = message;
+    window.clearTimeout(saveStatusTimer);
+    saveStatusTimer = window.setTimeout(() => {
+      ui.settingsSaveStatus.textContent = "更改会自动保存到此设备";
+    }, 1800);
   }
 
   function setSending(active) {
@@ -71,6 +80,7 @@ export function createConversationApp(root) {
   function readForm() {
     return {
       apiKey: ui.apiKey.value,
+      rememberApiKey: ui.rememberApiKey.checked,
       endpoint: ui.endpoint.value,
       model: ui.model.value,
       thinkingMode: ui.modes.find((mode) => mode.checked)?.value || "high",
@@ -80,6 +90,7 @@ export function createConversationApp(root) {
 
   function fillForm() {
     ui.apiKey.value = settings.apiKey;
+    ui.rememberApiKey.checked = settings.rememberApiKey;
     ui.endpoint.value = settings.endpoint;
     ui.model.value = settings.model;
     ui.systemPrompt.value = settings.systemPrompt;
@@ -87,11 +98,11 @@ export function createConversationApp(root) {
     if (selected) selected.checked = true;
   }
 
-  function saveForm() {
+  function saveForm({ announce = false } = {}) {
     settings = readForm();
     persistSettings(settings);
     updatePill();
-    showError();
+    if (announce) showSaveStatus();
   }
 
   function renderCurrentConversation() {
@@ -229,6 +240,14 @@ export function createConversationApp(root) {
   setSending(false);
   autoGrow();
 
+  const autoSave = () => saveForm({ announce: true });
+  ui.apiKey.addEventListener("input", autoSave);
+  ui.rememberApiKey.addEventListener("change", autoSave);
+  ui.endpoint.addEventListener("input", autoSave);
+  ui.systemPrompt.addEventListener("input", autoSave);
+  ui.model.addEventListener("change", autoSave);
+  ui.modes.forEach((mode) => mode.addEventListener("change", autoSave));
+
   ui.openHistory.addEventListener("click", openDrawer);
   ui.drawerBackdrop.addEventListener("click", closeDrawer);
   ui.newChat.addEventListener("click", startNewConversation);
@@ -237,19 +256,22 @@ export function createConversationApp(root) {
   ui.backdrop.addEventListener("click", closeSheet);
   ui.modelPill.addEventListener("click", openSheet);
   ui.clearChat.addEventListener("click", clearCurrentConversation);
-  ui.saveSettings.addEventListener("click", () => { saveForm(); closeSheet(); });
+  ui.saveSettings.addEventListener("click", () => {
+    saveForm();
+    showSaveStatus("已保存");
+    closeSheet();
+  });
   ui.clearKey.addEventListener("click", () => {
     clearStoredApiKey();
     ui.apiKey.value = "";
     settings.apiKey = "";
+    showSaveStatus("已清除 API Key");
   });
   ui.toggleKey.addEventListener("click", () => {
     const hidden = ui.apiKey.type === "password";
     ui.apiKey.type = hidden ? "text" : "password";
     ui.toggleKey.textContent = hidden ? "隐藏" : "显示";
   });
-  ui.model.addEventListener("change", () => { settings = readForm(); updatePill(); });
-  ui.modes.forEach((mode) => mode.addEventListener("change", () => { settings = readForm(); updatePill(); }));
   ui.stopButton.addEventListener("click", () => controller?.abort());
   ui.composer.addEventListener("submit", send);
   ui.prompt.addEventListener("input", autoGrow);
