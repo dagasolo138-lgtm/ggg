@@ -2,7 +2,11 @@ import { streamCompletion } from "../api/deepseek.js";
 import { MODE_LABELS } from "../config/constants.js";
 import { createConversationStore } from "../features/conversations/conversationStore.js";
 import { renderHistorySidebar } from "../features/conversations/historySidebar.js";
-import { clearStoredApiKey, loadSettings, persistSettings, validateSettings } from "../state/settings.js";
+import { conversationAsText, copyText, downloadJson } from "../features/settings/dataExport.js";
+import { buildPersonalizedSystemPrompt, createPreferencesStore } from "../features/settings/preferencesStore.js";
+import { createSettingsNavigator } from "../features/settings/settingsNavigator.js";
+import { createUsageStore } from "../features/usage/usageStore.js";
+import { clearAllStoredSettings, clearStoredApiKey, loadSettings, persistSettings, validateSettings } from "../state/settings.js";
 import { renderShell } from "../ui/layout.js";
 import { finalizeStreamingMessage, renderConversation, renderMessage, scrollToEnd, updateStreamingMessage } from "../ui/messages.js";
 
@@ -10,13 +14,23 @@ function compactModelName(model) {
   return model === "deepseek-v4-pro" ? "V4 Pro" : "V4";
 }
 
+function sanitizeSettingsForExport(settings) {
+  return {
+    ...settings,
+    apiKey: settings.apiKey ? "[已省略]" : "",
+  };
+}
+
 export function createConversationApp(root) {
   const ui = renderShell(root);
   const conversations = createConversationStore();
+  const preferences = createPreferencesStore();
+  const usage = createUsageStore();
   let settings = loadSettings();
   let controller = null;
   let requestId = 0;
   let saveStatusTimer = null;
+  let settingsNavigator;
 
   function cancelActiveRequest() {
     requestId += 1;
@@ -64,14 +78,14 @@ export function createConversationApp(root) {
     ui.drawerBackdrop.hidden = true;
   }
 
-  function openSheet() {
+  function openConnectionSheet() {
     closeDrawer();
     ui.sheet.setAttribute("aria-hidden", "false");
     ui.sheet.classList.add("is-open");
     ui.backdrop.hidden = false;
   }
 
-  function closeSheet() {
+  function closeConnectionSheet() {
     ui.sheet.setAttribute("aria-hidden", "true");
     ui.sheet.classList.remove("is-open");
     ui.backdrop.hidden = true;
@@ -149,6 +163,56 @@ export function createConversationApp(root) {
     ui.prompt.style.height = `${Math.min(ui.prompt.scrollHeight, 128)}px`;
   }
 
+  function notifyCompletion(content) {
+    const enabled = preferences.snapshot.notifications.chatComplete;
+    if (!enabled || !document.hidden || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    new Notification("bin returns!", { body: content.slice(0, 110) || "回复已完成" });
+  }
+
+  function exportCurrentConversation() {
+    const conversation = conversations.activeConversation;
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJson(`bin-对话-${date}.json`, conversation);
+  }
+
+  async function copyCurrentConversation() {
+    const conversation = conversations.activeConversation;
+    if (!conversation.messages.length) {
+      window.alert("当前对话还没有消息。");
+      return;
+    }
+    try {
+      await copyText(conversationAsText(conversation));
+      window.alert("当前对话已复制。");
+    } catch {
+      window.alert("复制失败，请使用“下载当前对话”。");
+    }
+  }
+
+  function exportAllLocalData() {
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJson(`bin-本地数据-${date}.json`, {
+      exportedAt: new Date().toISOString(),
+      conversations: conversations.list(),
+      settings: sanitizeSettingsForExport(settings),
+      preferences: preferences.snapshot,
+      usage: usage.snapshot,
+    });
+  }
+
+  function deleteAllLocalData() {
+    cancelActiveRequest();
+    clearAllStoredSettings();
+    conversations.clearAll();
+    preferences.clear();
+    usage.clear();
+    settings = loadSettings();
+    fillForm();
+    renderCurrentConversation();
+    updatePill();
+    showError();
+  }
+
   async function send(event) {
     event.preventDefault();
     if (controller) return;
@@ -160,9 +224,14 @@ export function createConversationApp(root) {
     const problem = validateSettings(settings);
     if (problem) {
       showError(problem);
-      openSheet();
+      openConnectionSheet();
       return;
     }
+
+    const requestSettings = {
+      ...settings,
+      systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot.profile),
+    };
 
     const id = ++requestId;
     controller = new AbortController();
@@ -182,16 +251,18 @@ export function createConversationApp(root) {
     });
     let finalContent = "";
     let reasoningContent = "";
+    let requestUsage = null;
 
     try {
       await streamCompletion({
-        settings,
+        settings: requestSettings,
         history: conversations.activeConversation.messages,
         signal: controller.signal,
         onDelta(delta) {
           if (id !== requestId) return;
           finalContent += delta.content;
           reasoningContent += delta.reasoningContent;
+          if (delta.usage) requestUsage = delta.usage;
           updateStreamingMessage(assistantView, delta);
           scrollToEnd(ui.messages);
         },
@@ -205,8 +276,10 @@ export function createConversationApp(root) {
         reasoningContent: hasReasoning ? reasoningContent : "",
         thinkingMode: settings.thinkingMode,
       });
+      usage.record(requestUsage);
       finalizeStreamingMessage(assistantView, { hasReasoning });
       refreshHistory();
+      notifyCompletion(finalContent);
     } catch (error) {
       if (id !== requestId) return;
       const stopped = error?.name === "AbortError";
@@ -234,6 +307,23 @@ export function createConversationApp(root) {
     }
   }
 
+  settingsNavigator = createSettingsNavigator({
+    ui,
+    preferences,
+    usage,
+    getConversationSnapshot: () => conversations.activeConversation,
+    getConversationCount: () => conversations.list().length,
+    onOpenConnection: () => {
+      settingsNavigator.close();
+      openConnectionSheet();
+    },
+    onDeleteAllLocalData: deleteAllLocalData,
+    onExportAllData: exportAllLocalData,
+    onExportCurrentConversation: exportCurrentConversation,
+    onCopyCurrentConversation: copyCurrentConversation,
+    onNotificationPreferenceChange: () => {},
+  });
+
   fillForm();
   updatePill();
   renderCurrentConversation();
@@ -251,15 +341,15 @@ export function createConversationApp(root) {
   ui.openHistory.addEventListener("click", openDrawer);
   ui.drawerBackdrop.addEventListener("click", closeDrawer);
   ui.newChat.addEventListener("click", startNewConversation);
-  ui.openSettings.addEventListener("click", openSheet);
-  ui.closeSettings.addEventListener("click", closeSheet);
-  ui.backdrop.addEventListener("click", closeSheet);
-  ui.modelPill.addEventListener("click", openSheet);
+  ui.openSettingsHub.addEventListener("click", () => settingsNavigator.open());
+  ui.closeSettings.addEventListener("click", closeConnectionSheet);
+  ui.backdrop.addEventListener("click", closeConnectionSheet);
+  ui.modelPill.addEventListener("click", openConnectionSheet);
   ui.clearChat.addEventListener("click", clearCurrentConversation);
   ui.saveSettings.addEventListener("click", () => {
     saveForm();
     showSaveStatus("已保存");
-    closeSheet();
+    closeConnectionSheet();
   });
   ui.clearKey.addEventListener("click", () => {
     clearStoredApiKey();
@@ -284,7 +374,8 @@ export function createConversationApp(root) {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeDrawer();
-      closeSheet();
+      closeConnectionSheet();
+      settingsNavigator.close();
     }
   });
 }
