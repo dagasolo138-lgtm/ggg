@@ -1,6 +1,8 @@
 const paths = {
   menu: '<path d="M4 7h16M4 12h16M4 17h11" />',
+  more: '<circle cx="5" cy="12" r="1.25" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.25" fill="currentColor" stroke="none" />',
   clear: '<path d="M7 7h10v10H7z" /><path d="M10 3h4M5 7h14" />',
+  trash: '<path d="M7 7h10v10H7z" /><path d="M10 3h4M5 7h14" />',
   plus: '<path d="M12 5v14M5 12h14" />',
   mic: '<rect x="9" y="3" width="6" height="11" rx="3" /><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8 21h8" />',
   send: '<path d="M5 12h13M13 6l6 6-6 6" />',
@@ -13,6 +15,9 @@ const paths = {
   bell: '<path d="M18 10a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 22h4" />',
   shield: '<path d="M12 3 5.5 6v5.5c0 4.2 2.5 7.6 6.5 9.5 4-1.9 6.5-5.3 6.5-9.5V6L12 3Z" /><path d="M9 12h6M12 9v6" />',
   share: '<circle cx="18" cy="5" r="2" /><circle cx="6" cy="12" r="2" /><circle cx="18" cy="19" r="2" /><path d="m8 11 8-5M8 13l8 5" />',
+  star: '<path d="m12 3 2.75 5.57 6.15.9-4.45 4.34 1.05 6.13L12 17.05 6.5 19.94l1.05-6.13L3.1 9.47l6.15-.9L12 3Z" />',
+  edit: '<path d="m4 16.5-.7 4.2 4.2-.7L19 8.5 15.5 5 4 16.5Z" /><path d="m13.8 6.7 3.5 3.5" />',
+  copy: '<rect x="8" y="8" width="11" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2" />',
   sliders: '<path d="M4 6h6M14 6h6M4 12h10M18 12h2M4 18h3M15 18h5" /><circle cx="11" cy="6" r="2" /><circle cx="15" cy="12" r="2" /><circle cx="10" cy="18" r="2" />',
   grid: '<rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" />',
   key: '<circle cx="8" cy="15" r="3" /><path d="m10 13 8-8M15 5l4 4M13 7l4 4" />',
