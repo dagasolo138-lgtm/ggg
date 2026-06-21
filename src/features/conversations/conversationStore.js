@@ -1,5 +1,6 @@
 const STORAGE_KEY = "bin-conversations-v1";
 const MAX_TITLE_LENGTH = 22;
+const MAX_MANUAL_TITLE_LENGTH = 80;
 
 function createId() {
   if (typeof crypto?.randomUUID === "function") return crypto.randomUUID();
@@ -11,6 +12,7 @@ function createConversation() {
   return {
     id: createId(),
     title: "新对话",
+    starred: false,
     createdAt: now,
     updatedAt: now,
     messages: [],
@@ -35,6 +37,7 @@ function normalizeConversation(value) {
   return {
     id: typeof value.id === "string" ? value.id : createId(),
     title: typeof value.title === "string" && value.title.trim() ? value.title : "新对话",
+    starred: Boolean(value.starred),
     createdAt: Number.isFinite(value.createdAt) ? value.createdAt : Date.now(),
     updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : Date.now(),
     messages: value.messages
@@ -84,6 +87,11 @@ function buildTitle(content) {
   return compact.length > MAX_TITLE_LENGTH ? `${compact.slice(0, MAX_TITLE_LENGTH)}…` : compact;
 }
 
+function normalizeManualTitle(value) {
+  const compact = typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  return compact.slice(0, MAX_MANUAL_TITLE_LENGTH);
+}
+
 export function createConversationStore() {
   let state = loadState();
 
@@ -100,7 +108,10 @@ export function createConversationStore() {
   }
 
   function ordered() {
-    return [...state.conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+    return [...state.conversations].sort((a, b) => {
+      if (a.starred !== b.starred) return Number(b.starred) - Number(a.starred);
+      return b.updatedAt - a.updatedAt;
+    });
   }
 
   function snapshot(conversation) {
@@ -141,6 +152,25 @@ export function createConversationStore() {
       return snapshot(conversation);
     },
 
+    rename(id, title) {
+      const conversation = state.conversations.find((item) => item.id === id);
+      const nextTitle = normalizeManualTitle(title);
+      if (!conversation || !nextTitle) return this.activeConversation;
+      conversation.title = nextTitle;
+      touch(conversation);
+      persist();
+      return snapshot(conversation);
+    },
+
+    toggleStar(id) {
+      const conversation = state.conversations.find((item) => item.id === id);
+      if (!conversation) return this.activeConversation;
+      conversation.starred = !conversation.starred;
+      touch(conversation);
+      persist();
+      return snapshot(conversation);
+    },
+
     remove(id) {
       const index = state.conversations.findIndex((conversation) => conversation.id === id);
       if (index === -1) return this.activeConversation;
@@ -175,7 +205,7 @@ export function createConversationStore() {
         thinkingMode: extras.thinkingMode || "disabled",
         attachments: normalizeAttachments(extras.attachments),
       });
-      if (role === "user" && conversation.messages.filter((message) => message.role === "user").length === 1) {
+      if (role === "user" && conversation.messages.filter((message) => message.role === "user").length === 1 && conversation.title === "新对话") {
         conversation.title = buildTitle(content);
       }
       touch(conversation);
