@@ -69,8 +69,6 @@ export function renderArtifactLaunchers(container, candidates, onOpenCandidate) 
   if (!candidates.length) return;
 
   const wrap = element("div", "artifact-launchers");
-  wrap.append(element("p", "artifact-launchers-title", "可创建 Artifact"));
-
   candidates.forEach((candidate) => {
     const action = document.createElement("button");
     action.type = "button";
@@ -78,7 +76,7 @@ export function renderArtifactLaunchers(container, candidates, onOpenCandidate) 
     const copy = element("span", "artifact-launcher-copy");
     copy.append(
       element("strong", "", candidate.title),
-      element("small", "", `${getArtifactTypeConfig(candidate.type).label} · 创建并预览`),
+      element("small", "", getArtifactTypeConfig(candidate.type).label),
     );
     action.append(iconElement("artifact"), copy, iconElement("chevron"));
     action.addEventListener("click", () => onOpenCandidate(candidate));
@@ -108,7 +106,7 @@ export function renderArtifactWorkspace(root, {
     empty.append(
       iconElement("artifact"),
       element("h3", "", "还没有 Artifact"),
-      element("p", "", "当 DeepSeek 回答里包含 HTML、SVG、Markdown 或 JSON 代码块时，消息下方会出现“创建并预览”。"),
+      element("p", "", "回复中的代码可保存到这里。"),
     );
     root.append(empty);
     return;
@@ -135,7 +133,7 @@ export function renderArtifactWorkspace(root, {
 
   const meta = element("div", "artifact-editor-meta");
   const title = element("div", "artifact-editor-title");
-  title.append(element("strong", "", artifact.title), element("small", "", `${getArtifactTypeConfig(artifact.type).label} · 本地保存`));
+  title.append(element("strong", "", artifact.title), element("small", "", getArtifactTypeConfig(artifact.type).label));
   const controls = element("div", "artifact-editor-controls");
 
   const edit = element("button", "artifact-control-button", editing ? "编辑中" : "编辑");
@@ -192,9 +190,7 @@ export function renderArtifactWorkspace(root, {
   } else {
     const preview = element("div", "artifact-preview");
     renderPreview(preview, artifact);
-    workspace.append(preview, element("p", "artifact-safety-note", artifact.type === "html"
-      ? "HTML 在隔离 iframe 中运行，不能访问聊天页面或本地数据。"
-      : "内容只保存在当前浏览器；可复制、下载或手动保存新版本。"));
+    workspace.append(preview);
   }
 
   root.append(list, workspace);
