@@ -13,13 +13,24 @@ function groupLabel(timestamp) {
 
 function createHistoryItem(conversation, activeId, handlers) {
   const row = document.createElement("div");
-  row.className = `history-item${conversation.id === activeId ? " is-active" : ""}`;
+  row.className = `history-item${conversation.id === activeId ? " is-active" : ""}${conversation.starred ? " is-starred" : ""}`;
 
   const select = document.createElement("button");
   select.type = "button";
   select.className = "history-select";
-  select.textContent = conversation.title;
   select.title = conversation.title;
+
+  if (conversation.starred) {
+    const marker = document.createElement("span");
+    marker.className = "history-star";
+    marker.textContent = "★";
+    marker.setAttribute("aria-label", "已收藏");
+    select.append(marker);
+  }
+
+  const title = document.createElement("span");
+  title.textContent = conversation.title;
+  select.append(title);
   select.addEventListener("click", () => handlers.onSelect(conversation.id));
 
   const remove = document.createElement("button");
@@ -49,7 +60,7 @@ export function renderHistorySidebar(container, conversations, activeId, handler
 
   const groups = new Map();
   conversations.forEach((conversation) => {
-    const label = groupLabel(conversation.updatedAt);
+    const label = conversation.starred ? "已收藏" : groupLabel(conversation.updatedAt);
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label).push(conversation);
   });
@@ -57,11 +68,9 @@ export function renderHistorySidebar(container, conversations, activeId, handler
   groups.forEach((items, label) => {
     const section = document.createElement("section");
     section.className = "history-group";
-
     const heading = document.createElement("h3");
     heading.textContent = label;
     section.append(heading);
-
     items.forEach((conversation) => section.append(createHistoryItem(conversation, activeId, handlers)));
     container.append(section);
   });
