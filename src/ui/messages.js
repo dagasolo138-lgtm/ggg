@@ -1,4 +1,6 @@
 import { MODE_LABELS } from "../config/constants.js";
+import { extractArtifactCandidates } from "../features/artifacts/artifactParser.js";
+import { renderArtifactLaunchers } from "../features/artifacts/artifactView.js";
 import { renderMessageAttachments } from "../features/attachments/attachmentView.js";
 
 function formatUsage(usage) {
@@ -33,6 +35,11 @@ export function scrollToEnd(container) {
   container.scrollTop = container.scrollHeight;
 }
 
+export function attachArtifactCandidates(view, candidates, onOpenArtifact) {
+  if (!view?.box || !candidates?.length || typeof onOpenArtifact !== "function") return;
+  renderArtifactLaunchers(view.box, candidates, onOpenArtifact);
+}
+
 export function renderMessage(container, {
   role,
   content = "",
@@ -40,6 +47,8 @@ export function renderMessage(container, {
   reasoningContent = "",
   attachments = [],
   isStreaming = false,
+  artifactCandidates = [],
+  onOpenArtifact,
 }) {
   const isUser = role === "user";
   const article = document.createElement("article");
@@ -57,6 +66,7 @@ export function renderMessage(container, {
 
   const view = {
     article,
+    box,
     answer: null,
     reasoning: null,
     reasoningStatus: null,
@@ -83,6 +93,10 @@ export function renderMessage(container, {
   box.append(answer);
   view.answer = answer;
 
+  if (!isUser && artifactCandidates.length) {
+    attachArtifactCandidates(view, artifactCandidates, onOpenArtifact);
+  }
+
   if (!isUser) {
     const meta = document.createElement("p");
     meta.className = "message-meta";
@@ -104,15 +118,18 @@ export function renderMessage(container, {
   return view;
 }
 
-export function renderConversation(container, messages) {
+export function renderConversation(container, messages, { onOpenArtifact } = {}) {
   container.replaceChildren();
   messages.forEach((message) => {
+    const artifactCandidates = message.role === "assistant" ? extractArtifactCandidates(message.content) : [];
     renderMessage(container, {
       role: message.role,
       content: message.content,
       mode: message.thinkingMode || "disabled",
       reasoningContent: message.reasoningContent || "",
       attachments: message.attachments || [],
+      artifactCandidates,
+      onOpenArtifact,
     });
   });
   scrollToEnd(container);
