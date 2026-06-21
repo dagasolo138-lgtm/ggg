@@ -37,7 +37,6 @@
 .assistant-message .message-avatar { background: #70afea; color: #fff; }
 .message-content { min-width: 0; padding: 12px 13px; border-radius: 20px; background: rgba(255,255,255,.58); border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(75,117,162,.08); backdrop-filter: blur(14px); }
 .user-message .message-content { padding: 12px 15px; border-radius: 20px 20px 6px 20px; background: rgba(255,255,255,.9); }
-.message-role { display: block; margin-bottom: 6px; color: #6688aa; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
 .answer-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.65; }
 .user-message .answer-text { font-size: 15px; line-height: 1.55; }
 .answer-pending { color: var(--muted); font-style: italic; }
