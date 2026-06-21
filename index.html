@@ -2,119 +2,12 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="一个纯前端的 DeepSeek V4 API 对话实验台" />
-    <title>DeepSeek V4 Playground</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="一个纯前端的 DeepSeek API 对话实验台" />
+    <title>bin returns!</title>
   </head>
   <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <a class="brand" href="#" aria-label="DeepSeek V4 Playground 首页">
-          <span class="brand-mark">D</span>
-          <span>
-            <strong>DeepSeek V4</strong>
-            <small>Playground</small>
-          </span>
-        </a>
-        <div class="topbar-note"><span class="status-dot"></span>纯前端 · API Key 不上传</div>
-      </header>
-
-      <main class="workspace">
-        <aside class="settings-panel" aria-label="连接设置">
-          <div class="panel-heading">
-            <p class="eyebrow">CONNECTION</p>
-            <h1>连接设置</h1>
-            <p>选择模型与思考档位，再开始对话。</p>
-          </div>
-
-          <label class="field-label" for="api-key">API Key</label>
-          <div class="secret-field">
-            <input id="api-key" type="password" autocomplete="off" placeholder="sk-..." />
-            <button id="toggle-key" class="icon-button" type="button" aria-label="显示或隐藏 API Key">显示</button>
-          </div>
-          <p class="field-help">仅保存到当前浏览器会话，关闭标签页后失效。</p>
-
-          <label class="field-label" for="endpoint">接口地址</label>
-          <input id="endpoint" type="url" value="https://api.deepseek.com/chat/completions" spellcheck="false" />
-
-          <label class="field-label" for="model">模型</label>
-          <select id="model">
-            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
-            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
-          </select>
-          <p class="field-help">Flash 适合日常任务；Pro 适合更重的推理与代码任务。</p>
-
-          <fieldset class="thinking-control">
-            <legend class="field-label">思考模式</legend>
-            <div class="thinking-options">
-              <label class="thinking-option">
-                <input type="radio" name="thinking-mode" value="disabled" />
-                <span class="mode-copy"><strong>快速</strong><small>直接回答</small></span>
-              </label>
-              <label class="thinking-option">
-                <input type="radio" name="thinking-mode" value="high" checked />
-                <span class="mode-copy"><strong>深度</strong><small>high</small></span>
-              </label>
-              <label class="thinking-option">
-                <input type="radio" name="thinking-mode" value="max" />
-                <span class="mode-copy"><strong>极限</strong><small>max</small></span>
-              </label>
-            </div>
-          </fieldset>
-          <p class="field-help">深度与极限会流式展示可折叠的思考过程。</p>
-
-          <label class="field-label" for="system-prompt">系统提示词</label>
-          <textarea id="system-prompt" rows="5" placeholder="例如：你是一个简洁、可靠的中文助手。">你是一个简洁、可靠的中文助手。</textarea>
-
-          <div class="settings-actions">
-            <button id="save-settings" class="secondary-button" type="button">保存设置</button>
-            <button id="clear-key" class="text-button" type="button">清除 Key</button>
-          </div>
-
-          <div class="security-note">
-            <strong>部署前要知道</strong>
-            <p>纯前端适合你自己使用。公开部署时，浏览器里的 Key 仍可能被拿到；后续做正式产品时要加服务端代理。</p>
-          </div>
-        </aside>
-
-        <section class="chat-panel" aria-label="聊天">
-          <div class="chat-header">
-            <div>
-              <p class="eyebrow">SESSION</p>
-              <h2>新对话</h2>
-            </div>
-            <div class="chat-actions">
-              <span id="connection-status" class="connection-status">未连接</span>
-              <button id="clear-chat" class="secondary-button" type="button">清空对话</button>
-            </div>
-          </div>
-
-          <div id="messages" class="messages" aria-live="polite">
-            <article class="message assistant-message">
-              <div class="message-avatar">D</div>
-              <div class="message-content">
-                <span class="message-role">DEEPSEEK</span>
-                <p>设置好 API Key 后，发一句话试试。</p>
-              </div>
-            </article>
-          </div>
-
-          <form id="composer" class="composer">
-            <textarea id="prompt" rows="1" placeholder="输入消息，Enter 发送，Shift + Enter 换行" autocomplete="off"></textarea>
-            <div class="composer-buttons">
-              <button id="stop-button" class="stop-button" type="button" hidden>停止</button>
-              <button id="send-button" class="send-button" type="submit">
-                <span>发送</span>
-                <span aria-hidden="true">↗</span>
-              </button>
-            </div>
-          </form>
-          <p id="error-message" class="error-message" role="alert"></p>
-        </section>
-      </main>
-    </div>
-
-    <script type="module" src="./app.js"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
