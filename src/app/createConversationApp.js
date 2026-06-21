@@ -1,5 +1,8 @@
 import { streamCompletion } from "../api/deepseek.js";
 import { MODE_LABELS } from "../config/constants.js";
+import { extractArtifactCandidates } from "../features/artifacts/artifactParser.js";
+import { createArtifactStore } from "../features/artifacts/artifactStore.js";
+import { createArtifactWorkspace } from "../features/artifacts/artifactWorkspace.js";
 import { createAttachmentStore } from "../features/attachments/attachmentStore.js";
 import { renderAttachmentTray } from "../features/attachments/attachmentView.js";
 import { createConversationActions } from "../features/conversations/conversationActions.js";
@@ -11,7 +14,7 @@ import { createSettingsNavigator } from "../features/settings/settingsNavigator.
 import { createUsageStore } from "../features/usage/usageStore.js";
 import { clearAllStoredSettings, clearStoredApiKey, loadSettings, persistSettings, validateSettings } from "../state/settings.js";
 import { renderShell } from "../ui/layout.js";
-import { finalizeStreamingMessage, renderConversation, renderMessage, scrollToEnd, updateStreamingMessage } from "../ui/messages.js";
+import { attachArtifactCandidates, finalizeStreamingMessage, renderConversation, renderMessage, scrollToEnd, updateStreamingMessage } from "../ui/messages.js";
 
 function compactModelName(model) {
   return model === "deepseek-v4-pro" ? "V4 Pro" : "V4";
@@ -27,6 +30,7 @@ function sanitizeSettingsForExport(settings) {
 export function createConversationApp(root) {
   const ui = renderShell(root);
   const conversations = createConversationStore();
+  const artifacts = createArtifactStore();
   const attachments = createAttachmentStore();
   const preferences = createPreferencesStore();
   const usage = createUsageStore();
@@ -36,6 +40,7 @@ export function createConversationApp(root) {
   let saveStatusTimer = null;
   let settingsNavigator;
   let conversationActions;
+  let artifactWorkspace;
 
   function cancelActiveRequest() {
     requestId += 1;
@@ -153,9 +158,13 @@ export function createConversationApp(root) {
     if (announce) showSaveStatus();
   }
 
+  function openArtifactCandidate(candidate) {
+    artifactWorkspace?.openCandidate(candidate);
+  }
+
   function renderCurrentConversation() {
     const conversation = conversations.activeConversation;
-    renderConversation(ui.messages, conversation.messages);
+    renderConversation(ui.messages, conversation.messages, { onOpenArtifact: openArtifactCandidate });
     syncEmpty();
     refreshHistory();
   }
@@ -271,6 +280,7 @@ export function createConversationApp(root) {
     downloadJson(`bin-本地数据-${date}.json`, {
       exportedAt: new Date().toISOString(),
       conversations: conversations.list(),
+      artifacts: artifacts.list(),
       settings: sanitizeSettingsForExport(settings),
       preferences: preferences.snapshot,
       usage: usage.snapshot,
@@ -280,8 +290,10 @@ export function createConversationApp(root) {
   function deleteAllLocalData() {
     cancelActiveRequest();
     clearAttachments();
+    artifactWorkspace?.close();
     clearAllStoredSettings();
     conversations.clearAll();
+    artifacts.clear();
     preferences.clear();
     usage.clear();
     settings = loadSettings();
@@ -369,6 +381,7 @@ export function createConversationApp(root) {
       });
       usage.record(requestUsage);
       finalizeStreamingMessage(assistantView, { hasReasoning });
+      attachArtifactCandidates(assistantView, extractArtifactCandidates(finalContent), openArtifactCandidate);
       clearAttachments();
       refreshHistory();
       notifyCompletion(finalContent);
@@ -398,6 +411,13 @@ export function createConversationApp(root) {
       }
     }
   }
+
+  artifactWorkspace = createArtifactWorkspace({
+    ui,
+    store: artifacts,
+    getConversationId: () => conversations.activeId,
+    onError: showError,
+  });
 
   conversationActions = createConversationActions({
     ui,
@@ -484,6 +504,7 @@ export function createConversationApp(root) {
       closeDrawer();
       closeConnectionSheet();
       settingsNavigator.close();
+      artifactWorkspace.close();
       conversationActions.closeMenu();
       conversationActions.closeRenameDialog();
     }
