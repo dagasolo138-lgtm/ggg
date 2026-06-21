@@ -1,90 +1,28 @@
 # bin returns!
 
-一个面向移动端的 DeepSeek API 个人对话前端。项目使用 Vite + 原生 ES Modules，部署到 GitHub Pages。
+移动端 DeepSeek API 对话前端。Vite + 原生 ES Modules，部署到 GitHub Pages。
 
-> [codex.md](./codex.md) 是本项目的长期技术档案，记录当前进度、模块关系、数据流、存储位置、接口逻辑、功能边界与版本更新记录。
->
-> **不要求每次开发前阅读 README 或 Codex；但每次开发完成后，必须更新 `codex.md` 的相关章节，并在末尾追加版本更新概述。**
+开发完成后必须更新 [codex.md](./codex.md) 并追加版本记录。
 
-## 当前能力
+## 功能
 
-- 本地多轮对话、历史切换、新建、收藏、重命名、删除、导出与系统分享。
-- SSE 流式输出；思考过程与最终回答分开显示。
-- 当前界面配置的 V4 Flash / Pro 模型选择，快速 / 深度 / 极限三档思考模式。
-- API Key、接口地址、模型、系统提示词自动保存。
-- BH 全屏设置中心：个人资料、个性化与长期记忆、本机用量、隐私、通知、导出、能力说明。
-- 结构化个性化：回答语言、长度、表达风格、结论优先、案例、表达禁忌、事实与不确定性规则。
-- 用户手动维护的长期记忆：新增、编辑、启用、关闭、删除与上下文预览。
-- 文本附件：`.txt`、`.md`、`.csv`、`.json` 和常见代码文件可随问题发送。
-- **Artifact v1**：DeepSeek 回答中的 HTML、SVG、Markdown、JSON 代码块可创建为本地作品；支持安全预览、版本保留、手动编辑、复制、下载和删除。
+- 本地对话、历史、收藏、重命名、删除、导出与系统分享。
+- 流式回答、思考过程、文本附件。
+- API Key、接口、模型、思考模式、系统提示词。
+- 个性化、长期记忆、本机用量、通知、Artifact。
+- Artifact 支持 HTML、SVG、Markdown、JSON 的本地预览、编辑、版本、复制与下载。
 
-完整的文件地图、连接点、存储键、请求上下文顺序、Artifact 规则、已知边界和下一步计划，请看 [codex.md](./codex.md)。
-
-## 本地运行
+## 开发
 
 ```bash
 npm install
 npm run dev
-```
-
-构建与预览：
-
-```bash
 npm run build
 npm run preview
 ```
 
-## GitHub Pages 部署
+推送到 `main` 后，GitHub Actions 会构建并部署到 Pages。
 
-仓库包含 `.github/workflows/deploy-pages.yml`。每次推送到 `main`，Actions 会安装依赖、构建 `dist/` 并部署到 GitHub Pages。
+## 安全
 
-首次使用时，在仓库中设置：
-
-```text
-Settings → Pages → Build and deployment → Source → GitHub Actions
-```
-
-## 当前 API 配置
-
-默认接口：
-
-```text
-POST https://api.deepseek.com/chat/completions
-```
-
-默认值和模型标识位于：`src/config/constants.js`。
-
-- 快速：关闭思考。
-- 深度：启用思考，`reasoning_effort: "high"`。
-- 极限：启用思考，`reasoning_effort: "max"`。
-
-模型名、请求字段和账户可用权限可能随服务商更新变化。涉及 API 改动时，先核对官方文档和账户实际权限。
-
-## Artifact 使用方式
-
-让模型输出完整的代码块，例如：
-
-````text
-请生成一个可运行的单页番茄钟，输出完整 HTML 代码，并放在 html 代码块中。
-````
-
-回答下方会出现“可创建 Artifact”。点击后会进入作品库。
-
-- HTML：在隔离的 `iframe sandbox` 中运行，不能访问聊天页面或本地数据。
-- SVG：在隔离预览中展示。
-- Markdown / JSON：安全文本预览。
-- 编辑 Artifact 会保存为新版本，旧版本仍可切换。
-
-Artifact 内容只保存在当前浏览器。它不支持云端同步、公开链接、多用户协作或让 Artifact 自己调用模型；这些能力需要后端。
-
-## 纯前端边界与安全
-
-当前版本适合个人受信任设备使用。浏览器会直接持有 API Key：
-
-- 勾选“在此设备记住 API Key”时，Key 保存到当前站点的 `localStorage`。
-- 未勾选时，Key 只保留在当前浏览器会话。
-- Key 不会提交到 GitHub，也不会包含在本地数据导出文件中。
-
-图片理解、联网搜索、OAuth 连接器、公开分享、账户系统、真实额度、跨设备同步都需要视觉模型或后端能力；当前页面不会把这些能力伪装成已完成。
-
-正式公开给他人使用前，应增加服务端或 Edge Function 代理，并加入登录、额度、限流和使用记录。
+API Key 仅保存在当前浏览器，不会提交到 GitHub 或导出文件。公开使用前需要后端或 Edge Function 代理。
