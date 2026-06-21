@@ -17,6 +17,19 @@ function createConversation() {
   };
 }
 
+function normalizeAttachments(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((attachment) => attachment && typeof attachment.name === "string")
+    .map((attachment) => ({
+      name: attachment.name,
+      size: Number.isFinite(attachment.size) ? attachment.size : 0,
+      type: typeof attachment.type === "string" ? attachment.type : "",
+      kind: attachment.kind === "image" ? "image" : "text",
+      status: typeof attachment.status === "string" ? attachment.status : "",
+    }));
+}
+
 function normalizeConversation(value) {
   if (!value || typeof value !== "object" || !Array.isArray(value.messages)) return null;
   return {
@@ -29,8 +42,10 @@ function normalizeConversation(value) {
       .map((message) => ({
         role: message.role,
         content: message.content,
+        apiContent: typeof message.apiContent === "string" ? message.apiContent : message.content,
         reasoningContent: typeof message.reasoningContent === "string" ? message.reasoningContent : "",
         thinkingMode: typeof message.thinkingMode === "string" ? message.thinkingMode : "disabled",
+        attachments: normalizeAttachments(message.attachments),
       })),
   };
 }
@@ -91,7 +106,10 @@ export function createConversationStore() {
   function snapshot(conversation) {
     return {
       ...conversation,
-      messages: conversation.messages.map((message) => ({ ...message })),
+      messages: conversation.messages.map((message) => ({
+        ...message,
+        attachments: message.attachments.map((attachment) => ({ ...attachment })),
+      })),
     };
   }
 
@@ -152,8 +170,10 @@ export function createConversationStore() {
       conversation.messages.push({
         role,
         content,
+        apiContent: typeof extras.apiContent === "string" ? extras.apiContent : content,
         reasoningContent: extras.reasoningContent || "",
         thinkingMode: extras.thinkingMode || "disabled",
+        attachments: normalizeAttachments(extras.attachments),
       });
       if (role === "user" && conversation.messages.filter((message) => message.role === "user").length === 1) {
         conversation.title = buildTitle(content);
