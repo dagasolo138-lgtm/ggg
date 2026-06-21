@@ -54,7 +54,8 @@ export function renderShell(root) {
         <div class="sheet-body">
           <label class="field-label" for="api-key">API Key</label>
           <div class="secret-field"><input id="api-key" type="password" autocomplete="off" placeholder="sk-..." /><button id="toggle-key" class="icon-text-button" type="button">显示</button></div>
-          <p class="field-help">仅保存到当前浏览器会话，关闭标签页后失效。</p>
+          <label class="remember-key"><input id="remember-api-key" type="checkbox" /><span>在此设备记住 API Key</span></label>
+          <p class="field-help">默认保存在这台设备的浏览器内。关闭此开关后，Key 只在当前页面会话保留。</p>
 
           <label class="field-label" for="endpoint">接口地址</label>
           <input id="endpoint" type="url" spellcheck="false" />
@@ -71,8 +72,9 @@ export function renderShell(root) {
           <label class="field-label" for="system-prompt">系统提示词</label>
           <textarea id="system-prompt" rows="5"></textarea>
 
-          <div class="settings-actions"><button id="save-settings" class="primary-button" type="button">保存设置</button><button id="clear-key" class="text-button" type="button">清除 Key</button></div>
-          <div class="security-note"><strong>部署前要知道</strong><p>纯前端适合自己使用。公开部署前应改为服务端或 Edge Function 代理。</p></div>
+          <div class="settings-actions"><button id="save-settings" class="primary-button" type="button">保存并关闭</button><button id="clear-key" class="text-button" type="button">清除 Key</button></div>
+          <p id="settings-save-status" class="settings-save-status" aria-live="polite">更改会自动保存到此设备</p>
+          <div class="security-note"><strong>部署前要知道</strong><p>浏览器本地保存适合你自己的设备。设备共享、浏览器同步或不受信任脚本环境下，不要勾选“记住 API Key”。</p></div>
         </div>
       </aside>
     </div>
@@ -101,6 +103,7 @@ export function renderShell(root) {
     modelPillText: root.querySelector("#model-pill-text"),
     error: root.querySelector("#error-message"),
     apiKey: root.querySelector("#api-key"),
+    rememberApiKey: root.querySelector("#remember-api-key"),
     endpoint: root.querySelector("#endpoint"),
     model: root.querySelector("#model"),
     modes: [...root.querySelectorAll('input[name="thinking-mode"]')],
@@ -108,5 +111,6 @@ export function renderShell(root) {
     toggleKey: root.querySelector("#toggle-key"),
     saveSettings: root.querySelector("#save-settings"),
     clearKey: root.querySelector("#clear-key"),
+    settingsSaveStatus: root.querySelector("#settings-save-status"),
   };
 }
