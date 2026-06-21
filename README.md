@@ -21,7 +21,7 @@ npm run build
 npm run preview
 ```
 
-推送到 `main` 后，GitHub Actions 会构建并部署到 Pages。
+推送到 `main` 后，GitHub Actions 会构建并部署到 Pages；发布后按 [QA.md](./QA.md) 完成手机端验收。
 
 ## 安全
 
