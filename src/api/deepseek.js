@@ -1,3 +1,5 @@
+import { buildAssistantInstruction } from "../config/assistantCore.js";
+
 function apiError(data, fallback) {
   if (typeof data?.error === "string") return data.error;
   if (typeof data?.error?.message === "string") return data.error.message;
@@ -26,11 +28,15 @@ function parseSseEvent(rawEvent, onDelta) {
   });
 }
 
-export async function streamCompletion({ settings, history, signal, onDelta }) {
-  const messages = [
-    ...(settings.systemPrompt.trim() ? [{ role: "system", content: settings.systemPrompt.trim() }] : []),
+export function buildRequestMessages(systemPrompt, history) {
+  return [
+    { role: "system", content: buildAssistantInstruction(systemPrompt) },
     ...history.map(({ role, content, apiContent }) => ({ role, content: apiContent || content })),
   ];
+}
+
+export async function streamCompletion({ settings, history, signal, onDelta }) {
+  const messages = buildRequestMessages(settings.systemPrompt, history);
 
   const body = {
     model: settings.model,
