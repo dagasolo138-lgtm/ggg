@@ -6,7 +6,10 @@ export function renderShell(root) {
       <aside id="history-drawer" class="history-drawer" aria-hidden="true">
         <div class="drawer-head">
           <strong class="drawer-brand">bin</strong>
-          <button id="open-settings-hub" class="profile-button" type="button" aria-label="打开设置">BH</button>
+          <div class="drawer-head-actions">
+            <button id="open-artifact-library" class="profile-button drawer-icon-button" type="button" aria-label="打开 Artifact 作品库">${icon("artifact")}</button>
+            <button id="open-settings-hub" class="profile-button" type="button" aria-label="打开设置">BH</button>
+          </div>
         </div>
         <p class="history-title">对话历史</p>
         <div id="history-list" class="history-list" aria-label="对话历史列表"></div>
@@ -103,6 +106,16 @@ export function renderShell(root) {
         <main id="settings-hub-content" class="settings-hub-content"></main>
       </aside>
 
+      <div id="artifact-workspace-backdrop" class="artifact-workspace-backdrop" hidden></div>
+      <aside id="artifact-workspace" class="artifact-workspace" aria-hidden="true" hidden>
+        <header class="artifact-workspace-header">
+          <button id="artifact-workspace-close" class="circle-button artifact-workspace-close" type="button" aria-label="关闭 Artifact">${icon("close")}</button>
+          <div><p>ARTIFACTS</p><h2 id="artifact-workspace-title">Artifacts</h2></div>
+          <span class="artifact-workspace-spacer" aria-hidden="true"></span>
+        </header>
+        <main id="artifact-workspace-content" class="artifact-workspace-content"></main>
+      </aside>
+
       <div id="rename-dialog" class="rename-dialog" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="rename-dialog-title">
         <form id="rename-dialog-form" class="rename-dialog-card">
           <h2 id="rename-dialog-title">重命名对话</h2>
@@ -122,6 +135,12 @@ export function renderShell(root) {
     shell: root.querySelector(".app-shell"),
     frame: root.querySelector("#app-frame"),
     openHistory: root.querySelector("#open-history"),
+    openArtifactLibrary: root.querySelector("#open-artifact-library"),
+    artifactWorkspace: root.querySelector("#artifact-workspace"),
+    artifactWorkspaceBackdrop: root.querySelector("#artifact-workspace-backdrop"),
+    artifactWorkspaceClose: root.querySelector("#artifact-workspace-close"),
+    artifactWorkspaceTitle: root.querySelector("#artifact-workspace-title"),
+    artifactWorkspaceContent: root.querySelector("#artifact-workspace-content"),
     conversationActions: root.querySelector("#conversation-actions"),
     conversationNewButton: root.querySelector("#conversation-new-button"),
     conversationMenuTrigger: root.querySelector("#conversation-menu-trigger"),
