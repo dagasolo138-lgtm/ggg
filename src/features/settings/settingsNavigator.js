@@ -1,4 +1,5 @@
 import { icon } from "../../ui/icons.js";
+import { renderPersonalizationView } from "./personalizationView.js";
 
 function createElement(tag, className = "", text = "") {
   const element = document.createElement(tag);
@@ -72,6 +73,7 @@ export function createSettingsNavigator({
   ui,
   preferences,
   usage,
+  getSystemPrompt,
   getConversationSnapshot,
   getConversationCount,
   onOpenConnection,
@@ -118,9 +120,11 @@ export function createSettingsNavigator({
     root.replaceChildren();
 
     const profile = preferences.snapshot.profile;
+    const memoryCount = preferences.snapshot.memories.filter((memory) => memory.enabled).length;
     const account = createGroup("个人");
     account.card.append(
-      createRouteRow({ title: "个人资料", description: profile.nickname ? `称呼：${profile.nickname}` : "设置称呼与回复偏好", iconName: "user", onClick: () => navigate("profile") }),
+      createRouteRow({ title: "个人资料", description: profile.nickname ? `称呼：${profile.nickname}` : "设置显示名称与称呼", iconName: "user", onClick: () => navigate("profile") }),
+      createRouteRow({ title: "个性化与记忆", description: `回答方式与 ${memoryCount} 条启用记忆`, iconName: "sliders", onClick: () => navigate("personalization") }),
       createRouteRow({ title: "用量", description: "本应用的本地 API 用量记录", iconName: "chart", onClick: () => navigate("usage") }),
     );
 
@@ -149,8 +153,7 @@ export function createSettingsNavigator({
     root.replaceChildren();
 
     const form = createElement("form", "settings-detail-form");
-    const intro = createElement("p", "settings-page-intro", "这些内容只保存在当前设备，并会作为你的个性化偏好加入新请求。");
-    form.append(intro);
+    form.append(createElement("p", "settings-page-intro", "这里仅保存基本身份信息。回答风格和长期资料请在“个性化与记忆”中维护。"));
 
     const displayLabel = createElement("label", "settings-field-label", "显示名称");
     const displayName = document.createElement("input");
@@ -164,28 +167,26 @@ export function createSettingsNavigator({
     nickname.maxLength = 30;
     nicknameLabel.append(nickname);
 
-    const instructionsLabel = createElement("label", "settings-field-label", "回复偏好");
-    const instructions = document.createElement("textarea");
-    instructions.rows = 6;
-    instructions.placeholder = "例如：回答直接、中文优先、用实际案例解释。";
-    instructions.value = current.customInstructions;
-    instructionsLabel.append(instructions);
-
     const save = createActionButton("保存个人资料", "primary");
     save.type = "submit";
     const status = createElement("p", "settings-inline-status");
+    form.append(displayLabel, nicknameLabel, save, status);
 
-    form.append(displayLabel, nicknameLabel, instructionsLabel, save, status);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      preferences.updateProfile({
-        displayName: displayName.value,
-        nickname: nickname.value,
-        customInstructions: instructions.value,
-      });
-      status.textContent = "已保存。新发送的消息会使用这些偏好。";
+      preferences.updateProfile({ displayName: displayName.value, nickname: nickname.value });
+      status.textContent = "已保存。";
     });
     root.append(form);
+  }
+
+  function renderPersonalization() {
+    renderHeader("个性化与记忆");
+    renderPersonalizationView({
+      root: ui.settingsHubContent,
+      preferences,
+      getBasePrompt: getSystemPrompt,
+    });
   }
 
   function renderUsage() {
@@ -208,8 +209,7 @@ export function createSettingsNavigator({
       card.append(row);
     });
 
-    const note = createElement("p", "settings-page-note", "完整 API 余额、限额、账单需要服务商账户接口或后端代理；当前纯前端页面无法安全读取。");
-    root.append(intro, card, note);
+    root.append(intro, card, createElement("p", "settings-page-note", "完整 API 余额、限额、账单需要服务商账户接口或后端代理；当前纯前端页面无法安全读取。"));
   }
 
   function renderNotifications() {
@@ -219,11 +219,9 @@ export function createSettingsNavigator({
     const current = preferences.snapshot.notifications;
     const supported = typeof Notification !== "undefined";
     const permission = supported ? Notification.permission : "unsupported";
-
-    const intro = createElement("p", "settings-page-intro", "开启后，当页面不在前台且一轮回复完成时，应用会尝试发送浏览器通知。");
-    const card = createElement("section", "settings-card settings-card-plain");
     const state = permission === "granted" ? "已授权" : permission === "denied" ? "已拒绝" : permission === "default" ? "尚未授权" : "当前浏览器不支持";
 
+    const card = createElement("section", "settings-card settings-card-plain");
     card.append(createToggle("回复完成提醒", `浏览器权限：${state}`, current.chatComplete, async (checked) => {
       if (checked && supported && Notification.permission === "default") {
         await Notification.requestPermission();
@@ -234,8 +232,11 @@ export function createSettingsNavigator({
       renderNotifications();
     }));
 
-    const note = createElement("p", "settings-page-note", "iPhone 上的网页通知依赖浏览器与系统授权；若当前环境不支持，开关会自动保持关闭。");
-    root.append(intro, card, note);
+    root.append(
+      createElement("p", "settings-page-intro", "开启后，当页面不在前台且一轮回复完成时，应用会尝试发送浏览器通知。"),
+      card,
+      createElement("p", "settings-page-note", "iPhone 上的网页通知依赖浏览器与系统授权；若当前环境不支持，开关会自动保持关闭。"),
+    );
   }
 
   function renderPrivacy() {
@@ -243,7 +244,6 @@ export function createSettingsNavigator({
     const root = ui.settingsHubContent;
     root.replaceChildren();
 
-    const intro = createElement("p", "settings-page-intro", "你的聊天记录、设置、个人偏好和本地用量都存于当前浏览器。GitHub Pages 不会替你保存这些数据。");
     const card = createElement("section", "settings-card settings-card-plain");
     card.append(
       createRouteRow({ title: "本地对话记录", description: `当前保存 ${getConversationCount()} 个对话`, iconName: "database", detail: "本设备", onClick: () => {} }),
@@ -252,13 +252,16 @@ export function createSettingsNavigator({
 
     const clear = createActionButton("删除这台设备上的全部应用数据", "danger");
     clear.addEventListener("click", () => {
-      const confirmed = window.confirm("这会删除当前浏览器中的聊天记录、设置、偏好与用量统计，且无法恢复。继续吗？");
-      if (!confirmed) return;
+      if (!window.confirm("这会删除当前浏览器中的聊天记录、设置、偏好与用量统计，且无法恢复。继续吗？")) return;
       onDeleteAllLocalData();
       close();
     });
 
-    root.append(intro, card, clear);
+    root.append(
+      createElement("p", "settings-page-intro", "你的聊天记录、设置、个人偏好和本地用量都存于当前浏览器。GitHub Pages 不会替你保存这些数据。"),
+      card,
+      clear,
+    );
   }
 
   function renderSharing() {
@@ -266,65 +269,59 @@ export function createSettingsNavigator({
     const root = ui.settingsHubContent;
     root.replaceChildren();
     const conversation = getConversationSnapshot();
-
-    const intro = createElement("p", "settings-page-intro", "当前版本可以导出或复制对话。公开链接需要账号、数据库和服务端权限校验，暂不在纯前端页面中伪造。");
     const card = createElement("section", "settings-card settings-card-plain");
     card.append(
       createRouteRow({ title: "复制当前对话", description: conversation.messages.length ? `${conversation.messages.length} 条消息` : "当前对话为空", iconName: "share", onClick: onCopyCurrentConversation }),
       createRouteRow({ title: "下载当前对话", description: "导出为 JSON 文件", iconName: "download", onClick: onExportCurrentConversation }),
     );
-    root.append(intro, card);
+    root.append(createElement("p", "settings-page-intro", "当前版本可以导出或复制对话。公开链接需要账号、数据库和服务端权限校验，暂不在纯前端页面中伪造。"), card);
   }
 
   function renderCapabilities() {
     renderHeader("能力");
     const root = ui.settingsHubContent;
     root.replaceChildren();
-    const intro = createElement("p", "settings-page-intro", "这里展示当前应用确实已经具备的能力，以及需要后端或兼容模型后才会开放的能力。");
     const card = createElement("section", "settings-card settings-card-plain");
-
     const rows = [
       ["多轮对话与本地历史", "已启用：当前设备保存对话，并支持切换历史。", "已启用"],
-      ["个性化回复偏好", "已启用：个人资料中的称呼与偏好会加入新请求。", "已启用"],
+      ["个性化与长期记忆", "已启用：回答方式与手动管理的记忆会加入新请求。", "已启用"],
       ["文本文件附件", "已启用：txt、md、csv、json 和常见代码文件会在浏览器读取后随消息发送。", "已启用"],
       ["图片理解", "待接入：当前 DeepSeek V4 文本接口不接收图片内容，需要视觉模型或自建多模态服务。", "需视觉模型"],
-      ["跨对话记忆", "待接入：需要独立记忆提取与可编辑的记忆库。", "待接入"],
       ["联网搜索", "待接入：需要搜索服务与后端代理，避免暴露密钥。", "待接入"],
     ];
     rows.forEach(([title, description, state]) => {
       card.append(createRouteRow({ title, description, iconName: "sliders", detail: state, onClick: () => {} }));
     });
-    root.append(intro, card);
+    root.append(createElement("p", "settings-page-intro", "这里展示当前应用确实已经具备的能力，以及需要后端或兼容模型后才会开放的能力。"), card);
   }
 
   function renderConnectors() {
     renderHeader("连接器");
     const root = ui.settingsHubContent;
     root.replaceChildren();
-    const intro = createElement("p", "settings-page-intro", "Gmail、Google Drive、Notion 这类连接器需要 OAuth 授权、回调地址和安全的服务端令牌存储。GitHub Pages 纯前端不能安全承载它们。");
     const card = createElement("section", "settings-card settings-card-plain");
     card.append(createRouteRow({ title: "连接器状态", description: "当前没有已接入的外部服务。", iconName: "plug", detail: "待后端", onClick: () => {} }));
-    root.append(intro, card);
+    root.append(createElement("p", "settings-page-intro", "Gmail、Google Drive、Notion 这类连接器需要 OAuth 授权、回调地址和安全的服务端令牌存储。GitHub Pages 纯前端不能安全承载它们。"), card);
   }
 
   function renderPermissions() {
     renderHeader("浏览器权限");
     const root = ui.settingsHubContent;
     root.replaceChildren();
-    const intro = createElement("p", "settings-page-intro", "这里只显示网页当前可实际使用的权限。日历、提醒事项、健康数据等 iPhone 原生权限无法由 GitHub Pages 网页直接获取。");
-    const card = createElement("section", "settings-card settings-card-plain");
     const notificationState = typeof Notification === "undefined" ? "不支持" : Notification.permission === "granted" ? "已允许" : Notification.permission === "denied" ? "已拒绝" : "未请求";
+    const card = createElement("section", "settings-card settings-card-plain");
     card.append(
       createRouteRow({ title: "通知", description: "用于回复完成提醒", iconName: "bell", detail: notificationState, onClick: () => navigate("notifications") }),
       createRouteRow({ title: "位置", description: "当前应用尚未使用位置功能", iconName: "location", detail: "未请求", onClick: () => {} }),
     );
-    root.append(intro, card);
+    root.append(createElement("p", "settings-page-intro", "这里只显示网页当前可实际使用的权限。日历、提醒事项、健康数据等 iPhone 原生权限无法由 GitHub Pages 网页直接获取。"), card);
   }
 
   function render() {
     const routes = {
       home: renderHome,
       profile: renderProfile,
+      personalization: renderPersonalization,
       usage: renderUsage,
       notifications: renderNotifications,
       privacy: renderPrivacy,
