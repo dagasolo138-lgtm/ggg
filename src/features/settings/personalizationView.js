@@ -9,28 +9,33 @@ function element(tag, className = "", text = "") {
   return node;
 }
 
+function resolveBasePrompt(getBasePrompt) {
+  if (typeof getBasePrompt === "function") return getBasePrompt() || "";
+  return localStorage.getItem("bin-deepseek-system-prompt") || "";
+}
+
 function selectField(label, value, options) {
   const wrapper = element("label", "personalization-field", label);
-  const select = document.createElement("select");
+  const input = document.createElement("select");
   options.forEach(([optionValue, optionLabel]) => {
     const option = document.createElement("option");
     option.value = optionValue;
     option.textContent = optionLabel;
     option.selected = optionValue === value;
-    select.append(option);
+    input.append(option);
   });
-  wrapper.append(select);
-  return { wrapper, input: select };
+  wrapper.append(input);
+  return { wrapper, input };
 }
 
 function textareaField(label, value, placeholder, rows = 5) {
   const wrapper = element("label", "personalization-field", label);
-  const textarea = document.createElement("textarea");
-  textarea.rows = rows;
-  textarea.value = value || "";
-  textarea.placeholder = placeholder;
-  wrapper.append(textarea);
-  return { wrapper, input: textarea };
+  const input = document.createElement("textarea");
+  input.rows = rows;
+  input.value = value || "";
+  input.placeholder = placeholder;
+  wrapper.append(input);
+  return { wrapper, input };
 }
 
 function toggleField(label, description, checked) {
@@ -38,35 +43,36 @@ function toggleField(label, description, checked) {
   const copy = element("span", "personalization-toggle-copy");
   copy.append(element("strong", "", label));
   if (description) copy.append(element("small", "", description));
-
   const visual = element("span", "settings-switch");
   const input = document.createElement("input");
   input.type = "checkbox";
   input.checked = Boolean(checked);
-  const track = element("span", "settings-switch-track");
-  visual.append(input, track);
+  visual.append(input, element("span", "settings-switch-track"));
   row.append(copy, visual);
   return { row, input };
 }
 
-function memoryEditor(memory, onSave, onDelete, onToggle) {
-  const card = element("article", "memory-card");
-  const header = element("div", "memory-card-header");
-
-  const category = document.createElement("select");
-  category.className = "memory-category-select";
+function categorySelect(value) {
+  const select = document.createElement("select");
+  select.className = "memory-category-select";
   MEMORY_CATEGORIES.forEach((name) => {
     const option = document.createElement("option");
     option.value = name;
     option.textContent = name;
-    option.selected = memory.category === name;
-    category.append(option);
+    option.selected = value === name;
+    select.append(option);
   });
+  return select;
+}
 
-  const state = toggleField("注入上下文", "关闭后仍保留，但不会发送给模型。", memory.enabled);
-  state.row.classList.add("memory-toggle");
-  state.input.addEventListener("change", () => onToggle(memory.id, state.input.checked));
-  header.append(category, state.row);
+function renderMemoryCard(memory, { onSave, onDelete, onToggle }) {
+  const card = element("article", "memory-card");
+  const header = element("div", "memory-card-header");
+  const category = categorySelect(memory.category);
+  const active = toggleField("注入上下文", "关闭后保留，但不会发送给模型。", memory.enabled);
+  active.row.classList.add("memory-toggle");
+  active.input.addEventListener("change", () => onToggle(memory.id, active.input.checked));
+  header.append(category, active.row);
 
   const title = document.createElement("input");
   title.className = "memory-title-input";
@@ -88,51 +94,39 @@ function memoryEditor(memory, onSave, onDelete, onToggle) {
     category: category.value,
     title: title.value,
     content: content.value,
-    enabled: state.input.checked,
+    enabled: active.input.checked,
   }));
-
   const remove = element("button", "memory-delete-button", "删除");
   remove.type = "button";
   remove.addEventListener("click", () => onDelete(memory.id));
   actions.append(save, remove);
-
   card.append(header, title, content, actions);
   return card;
 }
 
-function newMemoryForm(onAdd) {
+function renderNewMemoryForm(onAdd) {
   const form = element("form", "new-memory-form");
-  const heading = element("h3", "", "新增长期记忆");
-  const hint = element("p", "", "只记录稳定、长期、并且希望助手在未来相关对话中参考的信息。临时事项不要写入这里。");
-
-  const category = document.createElement("select");
-  category.className = "memory-category-select";
-  MEMORY_CATEGORIES.forEach((name) => {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name;
-    category.append(option);
-  });
-
+  form.append(
+    element("h3", "", "新增长期记忆"),
+    element("p", "", "只记录稳定、长期、希望助手在未来相关对话中参考的信息。临时事项不要写入这里。"),
+  );
+  const category = categorySelect("身份");
   const title = document.createElement("input");
   title.maxLength = 60;
   title.placeholder = "标题，例如：回答风格偏好";
-
   const content = document.createElement("textarea");
   content.rows = 4;
   content.maxLength = 700;
   content.placeholder = "内容，例如：希望复杂问题先给结论，再解释判断依据和下一步。";
-
-  const add = element("button", "settings-action-button primary", "保存为长期记忆");
-  add.type = "submit";
+  const save = element("button", "settings-action-button primary", "保存为长期记忆");
+  save.type = "submit";
   const status = element("p", "settings-inline-status");
+  form.append(category, title, content, save, status);
 
-  form.append(heading, hint, category, title, content, add, status);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     try {
       onAdd({ category: category.value, title: title.value, content: content.value, enabled: true });
-      category.value = "身份";
       title.value = "";
       content.value = "";
       status.textContent = "已保存为长期记忆。";
@@ -145,53 +139,35 @@ function newMemoryForm(onAdd) {
 
 export function renderPersonalizationView({ root, preferences, getBasePrompt }) {
   const state = preferences.snapshot;
+  const basePrompt = resolveBasePrompt(getBasePrompt);
+  const renderPreview = () => buildPersonalizedSystemPrompt(basePrompt, preferences.snapshot);
   root.replaceChildren();
 
   const intro = element("p", "settings-page-intro", "个性化分成三层：回答方式、长期资料、长期记忆。它们与基础系统提示词分开组织，并在每次发送时合并为可检查的上下文。");
-
   const preview = document.createElement("details");
   preview.className = "context-preview";
-  const summary = document.createElement("summary");
-  summary.textContent = "查看本轮会注入的上下文";
-  const pre = document.createElement("pre");
-  pre.textContent = buildPersonalizedSystemPrompt(getBasePrompt(), state);
-  preview.append(summary, pre);
+  preview.append(element("summary", "", "查看本轮会注入的上下文"));
+  const previewContent = document.createElement("pre");
+  previewContent.textContent = renderPreview();
+  preview.append(previewContent);
 
   const styleForm = element("form", "personalization-form");
-  const styleTitle = element("h3", "personalization-section-title", "回答方式");
-  const styleHint = element("p", "personalization-section-hint", "这些选项负责控制回应方式，不应该拿来记录你的个人经历或项目资料。");
-
-  const language = selectField("默认语言", state.responseStyle.language, [
-    ["zh-CN", "中文优先"],
-    ["auto", "跟随你的提问语言"],
-    ["en", "英文优先"],
-  ]);
-  const length = selectField("默认回答长度", state.responseStyle.length, [
-    ["concise", "简洁：只保留关键结论"],
-    ["balanced", "适中：结论 + 必要解释"],
-    ["detailed", "详细：完整展开推理与步骤"],
-  ]);
-  const directness = selectField("表达方式", state.responseStyle.directness, [
-    ["direct", "直接、克制、少套话"],
-    ["neutral", "中性、平衡"],
-    ["encouraging", "适度鼓励，但不空泛"],
-  ]);
+  styleForm.append(
+    element("h3", "personalization-section-title", "回答方式"),
+    element("p", "personalization-section-hint", "这些选项控制回应方式，不应该用来记录个人经历或项目资料。"),
+  );
+  const language = selectField("默认语言", state.responseStyle.language, [["zh-CN", "中文优先"], ["auto", "跟随你的提问语言"], ["en", "英文优先"]]);
+  const length = selectField("默认回答长度", state.responseStyle.length, [["concise", "简洁：只保留关键结论"], ["balanced", "适中：结论 + 必要解释"], ["detailed", "详细：完整展开推理与步骤"]]);
+  const directness = selectField("表达方式", state.responseStyle.directness, [["direct", "直接、克制、少套话"], ["neutral", "中性、平衡"], ["encouraging", "适度鼓励，但不空泛"]]);
   const conclusion = toggleField("复杂问题先给结论", "再给判断依据和下一步。", state.responseStyle.conclusionFirst);
   const examples = toggleField("优先给实际案例或步骤", "减少只讲抽象理论的回答。", state.responseStyle.useConcreteExamples);
   const contrast = toggleField("避免反驳式句法", "避免“不是……而是……”这一类表达。", state.responseStyle.avoidContrastPhrase);
   const uncertainty = toggleField("区分事实与不确定性", "信息不完整时明确写出假设和风险。", state.responseStyle.separateUncertainty);
-  const custom = textareaField("额外回复偏好", state.responseStyle.customInstructions, "补充你自己的规则，例如：投资问题先说明数据日期；代码改动后说明文件位置。", 5);
-
+  const custom = textareaField("额外回复偏好", state.responseStyle.customInstructions, "例如：投资问题先说明数据日期；代码改动后说明文件位置。", 5);
   const saveStyle = element("button", "settings-action-button primary", "保存回答方式");
   saveStyle.type = "submit";
   const styleStatus = element("p", "settings-inline-status");
-
-  styleForm.append(
-    styleTitle, styleHint,
-    language.wrapper, length.wrapper, directness.wrapper,
-    conclusion.row, examples.row, contrast.row, uncertainty.row,
-    custom.wrapper, saveStyle, styleStatus,
-  );
+  styleForm.append(language.wrapper, length.wrapper, directness.wrapper, conclusion.row, examples.row, contrast.row, uncertainty.row, custom.wrapper, saveStyle, styleStatus);
   styleForm.addEventListener("submit", (event) => {
     event.preventDefault();
     preferences.updateResponseStyle({
@@ -204,24 +180,22 @@ export function renderPersonalizationView({ root, preferences, getBasePrompt }) 
       separateUncertainty: uncertainty.input.checked,
       customInstructions: custom.input.value,
     });
+    previewContent.textContent = renderPreview();
     styleStatus.textContent = "回答方式已保存，会从下一次发送开始生效。";
-    pre.textContent = buildPersonalizedSystemPrompt(getBasePrompt(), preferences.snapshot);
   });
 
   const memorySection = element("section", "memory-section");
   memorySection.append(
     element("h3", "personalization-section-title", "长期记忆"),
-    element("p", "personalization-section-hint", "记忆只在启用时注入上下文。你可以随时编辑、关闭或删除；当前版本不会自动从聊天里生成记忆。"),
+    element("p", "personalization-section-hint", "记忆只在启用时注入上下文。你可以编辑、关闭或删除；当前版本不会自动从聊天里生成记忆。"),
   );
-
   const memoryList = element("div", "memory-list");
   if (!state.memories.length) {
     memoryList.append(element("p", "memory-empty", "还没有长期记忆。先添加 1–3 条真正长期有效的资料即可。"));
   } else {
     state.memories.forEach((memory) => {
-      memoryList.append(memoryEditor(
-        memory,
-        (id, payload) => {
+      memoryList.append(renderMemoryCard(memory, {
+        onSave(id, payload) {
           try {
             preferences.updateMemory(id, payload);
             renderPersonalizationView({ root, preferences, getBasePrompt });
@@ -229,19 +203,19 @@ export function renderPersonalizationView({ root, preferences, getBasePrompt }) 
             window.alert(error instanceof Error ? error.message : "保存失败。");
           }
         },
-        (id) => {
+        onDelete(id) {
           if (!window.confirm("删除这条长期记忆？")) return;
           preferences.removeMemory(id);
           renderPersonalizationView({ root, preferences, getBasePrompt });
         },
-        (id, enabled) => {
+        onToggle(id, enabled) {
           preferences.toggleMemory(id, enabled);
-          pre.textContent = buildPersonalizedSystemPrompt(getBasePrompt(), preferences.snapshot);
+          previewContent.textContent = renderPreview();
         },
-      ));
+      }));
     });
   }
-  memorySection.append(memoryList, newMemoryForm((payload) => {
+  memorySection.append(memoryList, renderNewMemoryForm((payload) => {
     preferences.addMemory(payload);
     renderPersonalizationView({ root, preferences, getBasePrompt });
   }));
