@@ -46,3 +46,4 @@ index.html → src/main.js → src/app/createConversationApp.js
 - v0.2.1–v0.2.4：Codex、对话操作、Artifact v1。
 - v0.2.5–v0.2.7：重命名弹窗组件级隐藏、恢复 Artifact 配置导出、Pages 构建恢复。
 - v0.2.8：删除未接入功能入口、无效按钮、重复标题与解释性文案；压缩 README、设置、个性化、Artifact 与消息 UI。功能数据结构未改。
+- v0.2.9：新增移动端发布验收清单；未改用户数据结构。
