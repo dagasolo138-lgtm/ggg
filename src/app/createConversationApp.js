@@ -1,5 +1,7 @@
 import { streamCompletion } from "../api/deepseek.js";
 import { MODE_LABELS } from "../config/constants.js";
+import { createAttachmentStore } from "../features/attachments/attachmentStore.js";
+import { renderAttachmentTray } from "../features/attachments/attachmentView.js";
 import { createConversationStore } from "../features/conversations/conversationStore.js";
 import { renderHistorySidebar } from "../features/conversations/historySidebar.js";
 import { conversationAsText, copyText, downloadJson } from "../features/settings/dataExport.js";
@@ -24,6 +26,7 @@ function sanitizeSettingsForExport(settings) {
 export function createConversationApp(root) {
   const ui = renderShell(root);
   const conversations = createConversationStore();
+  const attachments = createAttachmentStore();
   const preferences = createPreferencesStore();
   const usage = createUsageStore();
   let settings = loadSettings();
@@ -63,7 +66,31 @@ export function createConversationApp(root) {
     ui.sendButton.hidden = active;
     ui.sendButton.disabled = active;
     ui.stopButton.hidden = !active;
+    ui.attachButton.disabled = active;
     ui.composer.classList.toggle("is-sending", active);
+  }
+
+  function renderAttachments() {
+    renderAttachmentTray(ui.attachmentTray, attachments.list(), (id) => {
+      attachments.remove(id);
+      renderAttachments();
+    });
+  }
+
+  function clearAttachments() {
+    attachments.clear();
+    renderAttachments();
+    ui.attachmentInput.value = "";
+  }
+
+  async function addAttachments(fileList) {
+    try {
+      const result = await attachments.addFiles(fileList);
+      renderAttachments();
+      showError(result.warnings.at(-1) || "");
+    } catch {
+      showError("读取附件失败。请确认文件没有损坏后重试。");
+    }
   }
 
   function openDrawer() {
@@ -130,12 +157,14 @@ export function createConversationApp(root) {
     renderHistorySidebar(ui.historyList, conversations.list(), conversations.activeId, {
       onSelect(id) {
         cancelActiveRequest();
+        clearAttachments();
         conversations.select(id);
         renderCurrentConversation();
         closeDrawer();
       },
       onDelete(id) {
         cancelActiveRequest();
+        clearAttachments();
         conversations.remove(id);
         renderCurrentConversation();
       },
@@ -144,6 +173,7 @@ export function createConversationApp(root) {
 
   function startNewConversation() {
     cancelActiveRequest();
+    clearAttachments();
     conversations.create();
     renderCurrentConversation();
     closeDrawer();
@@ -152,6 +182,7 @@ export function createConversationApp(root) {
 
   function clearCurrentConversation() {
     cancelActiveRequest();
+    clearAttachments();
     conversations.remove(conversations.activeId);
     renderCurrentConversation();
     showError();
@@ -202,6 +233,7 @@ export function createConversationApp(root) {
 
   function deleteAllLocalData() {
     cancelActiveRequest();
+    clearAttachments();
     clearAllStoredSettings();
     conversations.clearAll();
     preferences.clear();
@@ -217,8 +249,16 @@ export function createConversationApp(root) {
     event.preventDefault();
     if (controller) return;
 
-    const prompt = ui.prompt.value.trim();
+    const selectedAttachments = attachments.list();
+    const hasTextAttachment = selectedAttachments.some((attachment) => attachment.kind === "text");
+    const typedPrompt = ui.prompt.value.trim();
+    const prompt = typedPrompt || (hasTextAttachment ? "请分析我附带的文件。" : "");
+
     if (!prompt) return;
+    if (attachments.hasUnsupportedImages()) {
+      showError("当前 DeepSeek V4 API 不支持图片输入。请移除图片，或等待接入视觉模型后再发送。");
+      return;
+    }
 
     saveForm();
     const problem = validateSettings(settings);
@@ -228,17 +268,22 @@ export function createConversationApp(root) {
       return;
     }
 
+    const attachmentContext = attachments.buildTextContext();
     const requestSettings = {
       ...settings,
       systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot.profile),
     };
+    const apiPrompt = `${prompt}${attachmentContext}`;
 
     const id = ++requestId;
     controller = new AbortController();
-    conversations.append("user", prompt);
+    conversations.append("user", prompt, {
+      apiContent: apiPrompt,
+      attachments: selectedAttachments,
+    });
     refreshHistory();
     syncEmpty();
-    renderMessage(ui.messages, { role: "user", content: prompt });
+    renderMessage(ui.messages, { role: "user", content: prompt, attachments: selectedAttachments });
     ui.prompt.value = "";
     autoGrow();
     showError();
@@ -278,6 +323,7 @@ export function createConversationApp(root) {
       });
       usage.record(requestUsage);
       finalizeStreamingMessage(assistantView, { hasReasoning });
+      clearAttachments();
       refreshHistory();
       notifyCompletion(finalContent);
     } catch (error) {
@@ -327,6 +373,7 @@ export function createConversationApp(root) {
   fillForm();
   updatePill();
   renderCurrentConversation();
+  renderAttachments();
   setSending(false);
   autoGrow();
 
@@ -346,6 +393,11 @@ export function createConversationApp(root) {
   ui.backdrop.addEventListener("click", closeConnectionSheet);
   ui.modelPill.addEventListener("click", openConnectionSheet);
   ui.clearChat.addEventListener("click", clearCurrentConversation);
+  ui.attachButton.addEventListener("click", () => ui.attachmentInput.click());
+  ui.attachmentInput.addEventListener("change", async (event) => {
+    if (event.target.files?.length) await addAttachments(event.target.files);
+    event.target.value = "";
+  });
   ui.saveSettings.addEventListener("click", () => {
     saveForm();
     showSaveStatus("已保存");
