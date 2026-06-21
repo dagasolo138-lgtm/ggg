@@ -10,6 +10,11 @@ export function loadSettings() {
   const rememberedKey = localStorage.getItem(STORAGE_KEYS.apiKey) || "";
   const sessionKey = sessionStorage.getItem(STORAGE_KEYS.apiKey) || "";
 
+  if (rememberApiKey && !rememberedKey && sessionKey) {
+    localStorage.setItem(STORAGE_KEYS.apiKey, sessionKey);
+    sessionStorage.removeItem(STORAGE_KEYS.apiKey);
+  }
+
   return {
     apiKey: rememberApiKey ? (rememberedKey || sessionKey) : sessionKey,
     rememberApiKey,
