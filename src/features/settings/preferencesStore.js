@@ -112,7 +112,12 @@ export function createPreferencesStore() {
   }
 
   function snapshot() {
-    return clone(preferences);
+    const value = clone(preferences);
+    // Compatibility: the existing request path still receives profile only.
+    // Carry structured preference layers inside that profile snapshot as well.
+    value.profile.responseStyle = clone(value.responseStyle);
+    value.profile.memories = clone(value.memories);
+    return value;
   }
 
   return {
@@ -158,12 +163,7 @@ export function createPreferencesStore() {
     updateMemory(id, memory) {
       const index = preferences.memories.findIndex((item) => item.id === id);
       if (index < 0) return snapshot();
-      const item = normalizeMemory({
-        ...preferences.memories[index],
-        ...memory,
-        id,
-        updatedAt: Date.now(),
-      });
+      const item = normalizeMemory({ ...preferences.memories[index], ...memory, id, updatedAt: Date.now() });
       if (!item) throw new Error("记忆内容不能为空。");
       preferences.memories[index] = item;
       persist();
@@ -186,9 +186,7 @@ export function createPreferencesStore() {
     },
 
     updateNotifications(notifications) {
-      preferences.notifications = {
-        chatComplete: Boolean(notifications.chatComplete),
-      };
+      preferences.notifications = { chatComplete: Boolean(notifications.chatComplete) };
       persist();
       return snapshot();
     },
@@ -201,15 +199,15 @@ export function createPreferencesStore() {
   };
 }
 
-export function buildPersonalizedSystemPrompt(basePrompt, preferences) {
-  const profile = preferences?.profile || {};
-  const style = preferences?.responseStyle || {};
-  const memories = Array.isArray(preferences?.memories) ? preferences.memories : [];
+export function buildPersonalizedSystemPrompt(basePrompt, preferenceSource) {
+  const fullPreferences = preferenceSource?.profile ? preferenceSource : null;
+  const profile = fullPreferences ? fullPreferences.profile : (preferenceSource || {});
+  const style = fullPreferences ? fullPreferences.responseStyle : preferenceSource?.responseStyle;
+  const memories = fullPreferences ? fullPreferences.memories : preferenceSource?.memories;
+  const safeStyle = { ...DEFAULT_PREFERENCES.responseStyle, ...(style || {}) };
   const sections = [];
 
-  if (basePrompt?.trim()) {
-    sections.push(`[基础助手规则]\n${basePrompt.trim()}`);
-  }
+  if (basePrompt?.trim()) sections.push(`[基础助手规则]\n${basePrompt.trim()}`);
 
   const profileLines = [];
   if (profile.displayName?.trim()) profileLines.push(`- 显示名称：${profile.displayName.trim()}`);
@@ -220,20 +218,20 @@ export function buildPersonalizedSystemPrompt(basePrompt, preferences) {
   }
 
   const styleLines = [
-    `- 语言：${languageLabel(style.language)}`,
-    `- 回答长度：${lengthLabel(style.length)}`,
-    `- 表达风格：${directnessLabel(style.directness)}`,
+    `- 语言：${languageLabel(safeStyle.language)}`,
+    `- 回答长度：${lengthLabel(safeStyle.length)}`,
+    `- 表达风格：${directnessLabel(safeStyle.directness)}`,
   ];
-  if (style.conclusionFirst) styleLines.push("- 复杂问题优先给出结论或判断，再展开说明。");
-  if (style.useConcreteExamples) styleLines.push("- 优先用具体案例、数据或可执行步骤解释。");
-  if (style.avoidContrastPhrase) styleLines.push("- 避免使用“不是……而是……”式的反驳句法，直接表达结论。");
-  if (style.separateUncertainty) styleLines.push("- 有不确定性时，明确写出已知事实、假设与不确定部分。");
-  if (style.customInstructions?.trim()) styleLines.push(`- 额外偏好：${style.customInstructions.trim()}`);
+  if (safeStyle.conclusionFirst) styleLines.push("- 复杂问题优先给出结论或判断，再展开说明。");
+  if (safeStyle.useConcreteExamples) styleLines.push("- 优先用具体案例、数据或可执行步骤解释。");
+  if (safeStyle.avoidContrastPhrase) styleLines.push("- 避免使用“不是……而是……”式的反驳句法，直接表达结论。");
+  if (safeStyle.separateUncertainty) styleLines.push("- 有不确定性时，明确写出已知事实、假设与不确定部分。");
+  if (safeStyle.customInstructions?.trim()) styleLines.push(`- 额外偏好：${safeStyle.customInstructions.trim()}`);
   sections.push(`[回答方式]\n${styleLines.join("\n")}`);
 
   let usedChars = 0;
   const memoryLines = [];
-  memories
+  (Array.isArray(memories) ? memories : [])
     .filter((memory) => memory.enabled)
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .forEach((memory) => {
