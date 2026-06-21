@@ -1,4 +1,5 @@
 import { MODE_LABELS } from "../config/constants.js";
+import { renderMessageAttachments } from "../features/attachments/attachmentView.js";
 
 function formatUsage(usage) {
   if (!usage?.total_tokens) return "";
@@ -37,6 +38,7 @@ export function renderMessage(container, {
   content = "",
   mode = "disabled",
   reasoningContent = "",
+  attachments = [],
   isStreaming = false,
 }) {
   const isUser = role === "user";
@@ -71,6 +73,8 @@ export function renderMessage(container, {
     view.reasoningStatus = reasoning.status;
     view.reasoningDetails = reasoning.details;
   }
+
+  if (isUser && attachments.length) renderMessageAttachments(box, attachments);
 
   const answer = document.createElement("p");
   answer.className = "answer-text";
@@ -108,6 +112,7 @@ export function renderConversation(container, messages) {
       content: message.content,
       mode: message.thinkingMode || "disabled",
       reasoningContent: message.reasoningContent || "",
+      attachments: message.attachments || [],
     });
   });
   scrollToEnd(container);
