@@ -1,41 +1,23 @@
 # bin returns!
 
-一个纯前端的 DeepSeek API 对话实验台。现在使用 Vite + 原生 ES Modules，页面、状态、接口、渲染和样式已经拆开。
+一个面向移动端的 DeepSeek API 个人对话前端。项目使用 Vite + 原生 ES Modules，部署到 GitHub Pages。
+
+> **开发每次必须看一次 [codex.md](./codex.md)。**
+>
+> `codex.md` 是本项目的长期技术档案，记录当前进度、模块关系、数据流、存储位置、接口逻辑、功能边界与版本更新记录。任何代码或架构更新完成后，都必须同步更新其中的相关说明，并在末尾追加版本更新概述。
 
 ## 当前能力
 
-- DeepSeek V4 Flash / Pro 模型切换
-- 快速、深度、极限三档思考模式
-- SSE 流式回复，思考过程和最终回答分开显示
-- 停止生成、清空对话、错误提示
-- API Key 只存在当前浏览器会话，不提交进 GitHub
-- 淡蓝色移动端聊天布局，设置位于底部抽屉
+- 本地多轮对话、历史切换、新建、删除、清空与导出。
+- SSE 流式输出；思考过程与最终回答分开显示。
+- 当前界面配置的 V4 Flash / Pro 模型选择，快速 / 深度 / 极限三档思考模式。
+- API Key、接口地址、模型、系统提示词自动保存。
+- BH 全屏设置中心：个人资料、个性化与长期记忆、本机用量、隐私、通知、导出、能力说明。
+- 结构化个性化：回答语言、长度、表达风格、结论优先、案例、表达禁忌、事实与不确定性规则。
+- 用户手动维护的长期记忆：新增、编辑、启用、关闭、删除与上下文预览。
+- 文本附件：`.txt`、`.md`、`.csv`、`.json` 和常见代码文件可随问题发送。
 
-## 项目结构
-
-```text
-src/
-  api/
-    deepseek.js          # DeepSeek 请求与 SSE 解析
-  app/
-    createApp.js         # 应用编排、事件绑定
-  config/
-    constants.js         # 默认配置、模型与思考模式文案
-  state/
-    chat.js              # 对话状态
-    settings.js          # Key 与设置的本地保存
-  ui/
-    icons.js             # SVG 图标
-    layout.js            # 页面骨架与设置抽屉
-    messages.js          # 消息与思考过程渲染
-  styles/
-    tokens.css           # 色彩与全局变量
-    app.css              # 移动端聊天布局
-    sheet.css            # 设置抽屉
-  main.js                # 前端入口
-
-index.html               # 只保留 #app 与入口脚本
-```
+完整的文件地图、连接点、存储键、请求上下文顺序、已知边界和下一步计划，请看 [codex.md](./codex.md)。
 
 ## 本地运行
 
@@ -44,34 +26,47 @@ npm install
 npm run dev
 ```
 
-构建静态产物：
+构建与预览：
 
 ```bash
 npm run build
+npm run preview
 ```
 
-产物会生成到 `dist/`。
+## GitHub Pages 部署
 
-## GitHub Pages
+仓库包含 `.github/workflows/deploy-pages.yml`。每次推送到 `main`，Actions 会安装依赖、构建 `dist/` 并部署到 GitHub Pages。
 
-仓库已经带有 `.github/workflows/deploy-pages.yml`。每次推送到 `main`，Actions 会安装依赖、构建 `dist/`，再部署到 GitHub Pages。
+首次使用时，在仓库中设置：
 
-第一次使用时，在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。随后等待 Actions 完成即可。
+```text
+Settings → Pages → Build and deployment → Source → GitHub Actions
+```
 
-## DeepSeek 调用逻辑
+## 当前 API 配置
 
-接口默认是：
+默认接口：
 
 ```text
 POST https://api.deepseek.com/chat/completions
 ```
 
-- 快速：`thinking: { type: "disabled" }`
-- 深度：`thinking: { type: "enabled" }` + `reasoning_effort: "high"`
-- 极限：`thinking: { type: "enabled" }` + `reasoning_effort: "max"`
+默认值和模型标识位于：`src/config/constants.js`。
 
-页面使用 `stream: true` 接收 SSE 流。`reasoning_content` 展示为可折叠思考过程，`content` 展示为最终回答。
+- 快速：关闭思考。
+- 深度：启用思考，`reasoning_effort: "high"`。
+- 极限：启用思考，`reasoning_effort: "max"`。
 
-## 纯前端边界
+模型名、请求字段和账户可用权限可能随服务商更新变化。涉及 API 改动时，先核对官方文档和账户实际权限。
 
-当前架构适合你自己使用。浏览器会直接持有 API Key，因此不适合把 Key 版公开给别人。正式公开部署时，应增加服务端或 Edge Function 代理，并加入登录、额度、限流和使用记录。
+## 纯前端边界与安全
+
+当前版本适合个人受信任设备使用。浏览器会直接持有 API Key：
+
+- 勾选“在此设备记住 API Key”时，Key 保存到当前站点的 `localStorage`。
+- 未勾选时，Key 只保留在当前浏览器会话。
+- Key 不会提交到 GitHub，也不会包含在本地数据导出文件中。
+
+图片理解、联网搜索、OAuth 连接器、公开分享、账户系统、真实额度、跨设备同步都需要视觉模型或后端能力；当前页面不会把这些能力伪装成已完成。
+
+正式公开给他人使用前，应增加服务端或 Edge Function 代理，并加入登录、额度、限流和使用记录。
