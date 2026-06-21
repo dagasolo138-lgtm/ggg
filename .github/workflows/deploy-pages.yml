@@ -27,7 +27,17 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build site
-        run: npm run build
+        shell: bash
+        run: |
+          set +e
+          npm run build > build.log 2>&1
+          status=$?
+          cat build.log
+          if [ "$status" -ne 0 ]; then
+            details="$(tail -n 40 build.log | tr '\n' ' ' | sed 's/%/%25/g')"
+            echo "::error title=Vite build failed::$details"
+            exit "$status"
+          fi
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
