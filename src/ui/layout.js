@@ -6,7 +6,7 @@ export function renderShell(root) {
       <aside id="history-drawer" class="history-drawer" aria-hidden="true">
         <div class="drawer-head">
           <strong class="drawer-brand">bin</strong>
-          <button id="open-settings" class="profile-button" type="button" aria-label="打开设置">BH</button>
+          <button id="open-settings-hub" class="profile-button" type="button" aria-label="打开设置">BH</button>
         </div>
         <p class="history-title">对话历史</p>
         <div id="history-list" class="history-list" aria-label="对话历史列表"></div>
@@ -48,7 +48,7 @@ export function renderShell(root) {
       <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
       <aside id="settings-sheet" class="settings-sheet" aria-hidden="true">
         <div class="sheet-head">
-          <div><p class="eyebrow">SETTINGS</p><h2>连接设置</h2></div>
+          <div><p class="eyebrow">CONNECTION</p><h2>模型与 API</h2></div>
           <button id="close-settings" class="circle-button sheet-close" type="button" aria-label="关闭设置">${icon("close")}</button>
         </div>
         <div class="sheet-body">
@@ -77,6 +77,16 @@ export function renderShell(root) {
           <div class="security-note"><strong>部署前要知道</strong><p>浏览器本地保存适合你自己的设备。设备共享、浏览器同步或不受信任脚本环境下，不要勾选“记住 API Key”。</p></div>
         </div>
       </aside>
+
+      <div id="settings-hub-backdrop" class="settings-hub-backdrop" hidden></div>
+      <aside id="settings-hub" class="settings-hub" aria-hidden="true" hidden>
+        <header class="settings-hub-header">
+          <button id="settings-hub-back" class="circle-button settings-hub-button" type="button" hidden aria-label="返回">${icon("back")}</button>
+          <h2 id="settings-hub-title">设置</h2>
+          <button id="settings-hub-close" class="circle-button settings-hub-button" type="button" aria-label="关闭设置">${icon("close")}</button>
+        </header>
+        <main id="settings-hub-content" class="settings-hub-content"></main>
+      </aside>
     </div>
   `;
 
@@ -88,7 +98,13 @@ export function renderShell(root) {
     historyList: root.querySelector("#history-list"),
     drawerBackdrop: root.querySelector("#drawer-backdrop"),
     newChat: root.querySelector("#new-chat"),
-    openSettings: root.querySelector("#open-settings"),
+    openSettingsHub: root.querySelector("#open-settings-hub"),
+    settingsHub: root.querySelector("#settings-hub"),
+    settingsHubBackdrop: root.querySelector("#settings-hub-backdrop"),
+    settingsHubTitle: root.querySelector("#settings-hub-title"),
+    settingsHubBack: root.querySelector("#settings-hub-back"),
+    settingsHubClose: root.querySelector("#settings-hub-close"),
+    settingsHubContent: root.querySelector("#settings-hub-content"),
     closeSettings: root.querySelector("#close-settings"),
     sheet: root.querySelector("#settings-sheet"),
     backdrop: root.querySelector("#sheet-backdrop"),
