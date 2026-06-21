@@ -6,11 +6,35 @@ function formatUsage(usage) {
   return reasoning ? `本次 ${usage.total_tokens} tokens · 思考 ${reasoning} tokens` : `本次 ${usage.total_tokens} tokens`;
 }
 
+function createReasoningBlock(mode, reasoningContent, isStreaming) {
+  const details = document.createElement("details");
+  details.className = "reasoning-details";
+  details.open = isStreaming;
+
+  const summary = document.createElement("summary");
+  const label = document.createElement("span");
+  label.textContent = `${MODE_LABELS[mode] || "深度"}思考`;
+  const status = document.createElement("small");
+  status.textContent = isStreaming ? "思考中" : "思考过程";
+  summary.append(label, status);
+
+  const pre = document.createElement("pre");
+  pre.textContent = reasoningContent || (isStreaming ? "正在思考…" : "");
+  details.append(summary, pre);
+  return { details, pre, status };
+}
+
 export function scrollToEnd(container) {
   container.scrollTop = container.scrollHeight;
 }
 
-export function renderMessage(container, { role, content = "", mode = "disabled", isStreaming = false }) {
+export function renderMessage(container, {
+  role,
+  content = "",
+  mode = "disabled",
+  reasoningContent = "",
+  isStreaming = false,
+}) {
   const article = document.createElement("article");
   article.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
 
@@ -20,19 +44,20 @@ export function renderMessage(container, { role, content = "", mode = "disabled"
 
   const box = document.createElement("div");
   box.className = "message-content";
-  box.innerHTML = `<span class="message-role">${role === "user" ? "YOU" : "DEEPSEEK"}</span>`;
 
-  const view = { article, answer: null, reasoning: null, reasoningStatus: null, meta: null };
+  const roleLabel = document.createElement("span");
+  roleLabel.className = "message-role";
+  roleLabel.textContent = role === "user" ? "YOU" : "DEEPSEEK";
+  box.append(roleLabel);
 
-  if (role === "assistant" && mode !== "disabled") {
-    const details = document.createElement("details");
-    details.className = "reasoning-details";
-    details.open = isStreaming;
-    details.innerHTML = `<summary><span>${MODE_LABELS[mode]}思考</span><small>思考中</small></summary><pre>正在思考…</pre>`;
-    box.append(details);
-    view.reasoning = details.querySelector("pre");
-    view.reasoningStatus = details.querySelector("small");
-    view.reasoningDetails = details;
+  const view = { article, answer: null, reasoning: null, reasoningStatus: null, reasoningDetails: null, meta: null };
+
+  if (role === "assistant" && (mode !== "disabled" || reasoningContent)) {
+    const reasoning = createReasoningBlock(mode === "disabled" ? "high" : mode, reasoningContent, isStreaming);
+    box.append(reasoning.details);
+    view.reasoning = reasoning.pre;
+    view.reasoningStatus = reasoning.status;
+    view.reasoningDetails = reasoning.details;
   }
 
   const answer = document.createElement("p");
@@ -55,9 +80,23 @@ export function renderMessage(container, { role, content = "", mode = "disabled"
   return view;
 }
 
+export function renderConversation(container, messages) {
+  container.replaceChildren();
+  messages.forEach((message) => {
+    renderMessage(container, {
+      role: message.role,
+      content: message.content,
+      mode: message.thinkingMode || "disabled",
+      reasoningContent: message.reasoningContent || "",
+    });
+  });
+  scrollToEnd(container);
+}
+
 export function updateStreamingMessage(view, { content, reasoningContent, usage, finishReason }) {
   if (reasoningContent && view.reasoning) {
-    view.reasoning.textContent += reasoningContent;
+    const wasPlaceholder = view.reasoning.textContent === "正在思考…";
+    view.reasoning.textContent = `${wasPlaceholder ? "" : view.reasoning.textContent}${reasoningContent}`;
     view.reasoningStatus.textContent = "思考中";
   }
   if (content) {
