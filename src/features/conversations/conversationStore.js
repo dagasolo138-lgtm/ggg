@@ -140,6 +140,13 @@ export function createConversationStore() {
       return this.activeConversation;
     },
 
+    clearAll() {
+      const first = createConversation();
+      state = { activeId: first.id, conversations: [first] };
+      persist();
+      return this.activeConversation;
+    },
+
     append(role, content, extras = {}) {
       const conversation = active();
       conversation.messages.push({
