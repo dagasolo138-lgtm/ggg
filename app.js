@@ -186,7 +186,6 @@ async function handleSubmit(event) {
     scrollMessagesToBottom();
   } catch (error) {
     pendingElement.remove();
-    conversation.pop();
     showError(error instanceof Error ? error.message : "请求失败，请稍后再试。");
   } finally {
     isSending = false;
