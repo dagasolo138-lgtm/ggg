@@ -194,7 +194,7 @@ export function createSettingsNavigator({
     const root = ui.settingsHubContent;
     root.replaceChildren();
 
-    const intro = createElement("p", "settings-page-intro", "这是本应用在当前设备记录的 API 用量，不代表 DeepSeek 账户额度或账单。" );
+    const intro = createElement("p", "settings-page-intro", "这是本应用在当前设备记录的 API 用量，不代表 DeepSeek 账户额度或账单。");
     const card = createElement("section", "usage-card");
     const values = [
       ["累计请求", `${formatNumber(current.requestCount)} 次`],
@@ -208,7 +208,7 @@ export function createSettingsNavigator({
       card.append(row);
     });
 
-    const note = createElement("p", "settings-page-note", "完整 API 余额、限额、账单需要服务商账户接口或后端代理；当前纯前端页面无法安全读取。" );
+    const note = createElement("p", "settings-page-note", "完整 API 余额、限额、账单需要服务商账户接口或后端代理；当前纯前端页面无法安全读取。");
     root.append(intro, card, note);
   }
 
@@ -220,7 +220,7 @@ export function createSettingsNavigator({
     const supported = typeof Notification !== "undefined";
     const permission = supported ? Notification.permission : "unsupported";
 
-    const intro = createElement("p", "settings-page-intro", "开启后，当页面不在前台且一轮回复完成时，应用会尝试发送浏览器通知。" );
+    const intro = createElement("p", "settings-page-intro", "开启后，当页面不在前台且一轮回复完成时，应用会尝试发送浏览器通知。");
     const card = createElement("section", "settings-card settings-card-plain");
     const state = permission === "granted" ? "已授权" : permission === "denied" ? "已拒绝" : permission === "default" ? "尚未授权" : "当前浏览器不支持";
 
@@ -234,7 +234,7 @@ export function createSettingsNavigator({
       renderNotifications();
     }));
 
-    const note = createElement("p", "settings-page-note", "iPhone 上的网页通知依赖浏览器与系统授权；若当前环境不支持，开关会自动保持关闭。" );
+    const note = createElement("p", "settings-page-note", "iPhone 上的网页通知依赖浏览器与系统授权；若当前环境不支持，开关会自动保持关闭。");
     root.append(intro, card, note);
   }
 
@@ -243,10 +243,10 @@ export function createSettingsNavigator({
     const root = ui.settingsHubContent;
     root.replaceChildren();
 
-    const intro = createElement("p", "settings-page-intro", "你的聊天记录、设置、个人偏好和本地用量都存于当前浏览器。GitHub Pages 不会替你保存这些数据。" );
+    const intro = createElement("p", "settings-page-intro", "你的聊天记录、设置、个人偏好和本地用量都存于当前浏览器。GitHub Pages 不会替你保存这些数据。");
     const card = createElement("section", "settings-card settings-card-plain");
     card.append(
-      createRouteRow({ title: "本地对话记录", description: `当前保存 ${getConversationCount()} 个对话`, iconName: "database", detail: "本设备" , onClick: () => {} }),
+      createRouteRow({ title: "本地对话记录", description: `当前保存 ${getConversationCount()} 个对话`, iconName: "database", detail: "本设备", onClick: () => {} }),
       createRouteRow({ title: "导出全部本地数据", description: "下载 JSON 备份，包含设置与聊天记录", iconName: "download", onClick: onExportAllData }),
     );
 
@@ -267,7 +267,7 @@ export function createSettingsNavigator({
     root.replaceChildren();
     const conversation = getConversationSnapshot();
 
-    const intro = createElement("p", "settings-page-intro", "当前版本可以导出或复制对话。公开链接需要账号、数据库和服务端权限校验，暂不在纯前端页面中伪造。" );
+    const intro = createElement("p", "settings-page-intro", "当前版本可以导出或复制对话。公开链接需要账号、数据库和服务端权限校验，暂不在纯前端页面中伪造。");
     const card = createElement("section", "settings-card settings-card-plain");
     card.append(
       createRouteRow({ title: "复制当前对话", description: conversation.messages.length ? `${conversation.messages.length} 条消息` : "当前对话为空", iconName: "share", onClick: onCopyCurrentConversation }),
@@ -280,14 +280,15 @@ export function createSettingsNavigator({
     renderHeader("能力");
     const root = ui.settingsHubContent;
     root.replaceChildren();
-    const intro = createElement("p", "settings-page-intro", "这里展示当前应用确实已经具备的能力，以及需要后端后才会开放的能力。" );
+    const intro = createElement("p", "settings-page-intro", "这里展示当前应用确实已经具备的能力，以及需要后端或兼容模型后才会开放的能力。");
     const card = createElement("section", "settings-card settings-card-plain");
 
     const rows = [
       ["多轮对话与本地历史", "已启用：当前设备保存对话，并支持切换历史。", "已启用"],
       ["个性化回复偏好", "已启用：个人资料中的称呼与偏好会加入新请求。", "已启用"],
+      ["文本文件附件", "已启用：txt、md、csv、json 和常见代码文件会在浏览器读取后随消息发送。", "已启用"],
+      ["图片理解", "待接入：当前 DeepSeek V4 文本接口不接收图片内容，需要视觉模型或自建多模态服务。", "需视觉模型"],
       ["跨对话记忆", "待接入：需要独立记忆提取与可编辑的记忆库。", "待接入"],
-      ["图片与文件", "待接入：需要确认目标模型的多模态能力并加入上传流程。", "待接入"],
       ["联网搜索", "待接入：需要搜索服务与后端代理，避免暴露密钥。", "待接入"],
     ];
     rows.forEach(([title, description, state]) => {
@@ -300,9 +301,9 @@ export function createSettingsNavigator({
     renderHeader("连接器");
     const root = ui.settingsHubContent;
     root.replaceChildren();
-    const intro = createElement("p", "settings-page-intro", "Gmail、Google Drive、Notion 这类连接器需要 OAuth 授权、回调地址和安全的服务端令牌存储。GitHub Pages 纯前端不能安全承载它们。" );
+    const intro = createElement("p", "settings-page-intro", "Gmail、Google Drive、Notion 这类连接器需要 OAuth 授权、回调地址和安全的服务端令牌存储。GitHub Pages 纯前端不能安全承载它们。");
     const card = createElement("section", "settings-card settings-card-plain");
-    card.append(createRouteRow({ title: "连接器状态", description: "当前没有已接入的外部服务。", iconName: "plug", detail: "待后端" , onClick: () => {} }));
+    card.append(createRouteRow({ title: "连接器状态", description: "当前没有已接入的外部服务。", iconName: "plug", detail: "待后端", onClick: () => {} }));
     root.append(intro, card);
   }
 
@@ -310,7 +311,7 @@ export function createSettingsNavigator({
     renderHeader("浏览器权限");
     const root = ui.settingsHubContent;
     root.replaceChildren();
-    const intro = createElement("p", "settings-page-intro", "这里只显示网页当前可实际使用的权限。日历、提醒事项、健康数据等 iPhone 原生权限无法由 GitHub Pages 网页直接获取。" );
+    const intro = createElement("p", "settings-page-intro", "这里只显示网页当前可实际使用的权限。日历、提醒事项、健康数据等 iPhone 原生权限无法由 GitHub Pages 网页直接获取。");
     const card = createElement("section", "settings-card settings-card-plain");
     const notificationState = typeof Notification === "undefined" ? "不支持" : Notification.permission === "granted" ? "已允许" : Notification.permission === "denied" ? "已拒绝" : "未请求";
     card.append(
