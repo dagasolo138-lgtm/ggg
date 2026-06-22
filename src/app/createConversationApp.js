@@ -389,11 +389,15 @@ export function createConversationApp(root) {
       }
     } catch (error) {
       showError(error instanceof Error ? error.message : "知识库检索失败，请稍后再试。");
+      abortController = null;
+      activeRequest = null;
       isSending = false;
       setSending(false);
       return;
     }
     if (controller.signal.aborted) {
+      abortController = null;
+      activeRequest = null;
       isSending = false;
       setSending(false);
       return;
