@@ -16,7 +16,8 @@
 index.html → src/main.js → src/app/createConversationApp.js
 ```
 
-- `api/deepseek.js`：流式 API。
+- `api/deepseek.js`：流式 API 与请求消息组装。
+- `config/assistantCore.js`：内置助手行为层；不进入设置、个性化、记忆或导出数据。
 - `features/conversations/`：对话、本地历史、顶部操作。
 - `features/settings/`：设置、个性化、记忆、导出。
 - `features/attachments/`：文本附件。
@@ -33,6 +34,7 @@ index.html → src/main.js → src/app/createConversationApp.js
 - Artifact：`bin-artifacts-v1`
 - 导出会省略 API Key。清空本地数据会删除上述数据。
 - Artifact HTML/SVG 必须继续在 sandbox iframe 中预览。
+- 中断请求必须将已有内容保存回原对话；不得因切换对话、创建新对话或手动停止丢失部分回答。
 
 ## 维护约束
 
@@ -49,3 +51,4 @@ index.html → src/main.js → src/app/createConversationApp.js
 - v0.2.9：新增移动端发布验收清单；未改用户数据结构。
 - v0.3.0：调整请求构建顺序；未改本地数据结构。
 - v0.3.1：调整内置助手行为的措辞；未改本地数据结构。
+- v0.3.2：修复中断回复丢失、历史误删无确认、启动兜底二次报错、复制降级失败与 Artifact 存储失败后的状态漂移。
