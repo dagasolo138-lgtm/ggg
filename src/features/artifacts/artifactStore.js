@@ -50,7 +50,8 @@ function normalizeVersion(value) {
 
 function normalizeArtifact(value) {
   if (!value || typeof value !== "object") return null;
-  const versions = Array.isArray(value.versions) ? value.versions.map(normalizeVersion).filter(Boolean) : [];
+  const versions = (Array.isArray(value.versions) ? value.versions.map(normalizeVersion).filter(Boolean) : [])
+    .slice(-MAX_VERSIONS_PER_ARTIFACT);
   if (!versions.length) return null;
   const activeVersionId = versions.some((version) => version.id === value.activeVersionId)
     ? value.activeVersionId
@@ -65,7 +66,7 @@ function normalizeArtifact(value) {
     createdAt: Number.isFinite(value.createdAt) ? value.createdAt : Date.now(),
     updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : Date.now(),
     activeVersionId,
-    versions: versions.slice(-MAX_VERSIONS_PER_ARTIFACT),
+    versions,
   };
 }
 
@@ -108,6 +109,29 @@ export function createArtifactStore() {
     artifact.updatedAt = Date.now();
   }
 
+  function commit(nextArtifacts) {
+    const previous = artifacts;
+    artifacts = nextArtifacts;
+    try {
+      persist();
+    } catch (error) {
+      artifacts = previous;
+      throw error;
+    }
+  }
+
+  function mutateArtifact(artifact, mutate) {
+    const previous = clone(artifact);
+    mutate();
+    try {
+      persist();
+    } catch (error) {
+      Object.assign(artifact, previous);
+      throw error;
+    }
+    return snapshot(artifact);
+  }
+
   return {
     list() {
       return artifacts
@@ -148,27 +172,26 @@ export function createArtifactStore() {
         activeVersionId: version.id,
         versions: [version],
       };
-      artifacts.unshift(artifact);
-      persist();
+      commit([artifact, ...artifacts]);
       return snapshot(artifact);
     },
 
     rename(id, title) {
       const artifact = find(id);
       if (!artifact) return null;
-      artifact.title = cleanTitle(title, artifact.title);
-      touch(artifact);
-      persist();
-      return snapshot(artifact);
+      return mutateArtifact(artifact, () => {
+        artifact.title = cleanTitle(title, artifact.title);
+        touch(artifact);
+      });
     },
 
     selectVersion(id, versionId) {
       const artifact = find(id);
       if (!artifact || !artifact.versions.some((version) => version.id === versionId)) return null;
-      artifact.activeVersionId = versionId;
-      touch(artifact);
-      persist();
-      return snapshot(artifact);
+      return mutateArtifact(artifact, () => {
+        artifact.activeVersionId = versionId;
+        touch(artifact);
+      });
     },
 
     addVersion(id, content, label = "手动修改") {
@@ -185,22 +208,27 @@ export function createArtifactStore() {
         content: nextContent,
         createdAt: Date.now(),
       };
-      artifact.versions.push(version);
-      artifact.versions = artifact.versions.slice(-MAX_VERSIONS_PER_ARTIFACT);
-      artifact.activeVersionId = version.id;
-      touch(artifact);
-      persist();
-      return snapshot(artifact);
+      return mutateArtifact(artifact, () => {
+        artifact.versions = [...artifact.versions, version].slice(-MAX_VERSIONS_PER_ARTIFACT);
+        artifact.activeVersionId = version.id;
+        touch(artifact);
+      });
     },
 
     remove(id) {
-      artifacts = artifacts.filter((artifact) => artifact.id !== id);
-      persist();
+      if (!find(id)) return;
+      commit(artifacts.filter((artifact) => artifact.id !== id));
     },
 
     clear() {
+      const previous = artifacts;
       artifacts = [];
-      localStorage.removeItem(STORAGE_KEY);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        artifacts = previous;
+        throw new Error("无法清空作品库。");
+      }
     },
   };
 }
