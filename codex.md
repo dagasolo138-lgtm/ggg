@@ -22,6 +22,7 @@ index.html → src/main.js → src/app/createConversationApp.js
 - `features/settings/`：设置、个性化、记忆、导出。
 - `features/attachments/`：文本附件。
 - `features/artifacts/`：代码块识别、本地作品库、预览与版本。
+- `features/qa/`：仅在 `?qa=1` 挂载的真实对话验收；不会写入聊天、记忆或设置。
 - `ui/layout.js`：页面 DOM；`ui/messages.js`：消息渲染。
 - `state/settings.js`：API 设置。
 
@@ -35,6 +36,7 @@ index.html → src/main.js → src/app/createConversationApp.js
 - 导出会省略 API Key。清空本地数据会删除上述数据。
 - Artifact HTML/SVG 必须继续在 sandbox iframe 中预览。
 - 中断请求必须将已有内容保存回原对话；不得因切换对话、创建新对话或手动停止丢失部分回答。
+- QA 面板只使用当前浏览器的 API 配置，运行前需人工点击；结果仅存在当前页面，可复制或下载。
 
 ## 维护约束
 
@@ -52,3 +54,4 @@ index.html → src/main.js → src/app/createConversationApp.js
 - v0.3.0：调整请求构建顺序；未改本地数据结构。
 - v0.3.1：调整内置助手行为的措辞；未改本地数据结构。
 - v0.3.2：修复中断回复丢失、历史误删无确认、启动兜底二次报错、复制降级失败与 Artifact 存储失败后的状态漂移。
+- v0.3.3：新增 `?qa=1` 真实对话验收面板；默认界面不显示，验收请求不写入用户数据。
