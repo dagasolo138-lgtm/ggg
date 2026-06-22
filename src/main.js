@@ -1,10 +1,12 @@
 import { createConversationApp } from "./app/createConversationApp.js";
+import { mountQaFromQuery } from "./features/qa/qaBootstrap.js";
 
 const root = document.querySelector("#app");
 
 try {
   if (!root) throw new Error("找不到应用根节点 #app。");
   createConversationApp(root);
+  mountQaFromQuery();
 } catch (error) {
   console.error("应用启动失败：", error);
   const message = error instanceof Error ? error.message : "未知错误";
