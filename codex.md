@@ -20,6 +20,7 @@ index.html → src/main.js → src/app/createConversationApp.js
 - `config/assistantCore.js`：内置助手行为层；不进入设置、个性化、记忆或导出数据。
 - `features/conversations/`：对话、本地历史、顶部操作。
 - `features/settings/`：设置、个性化、记忆、导出。
+- `features/knowledge/zhishiStore.js`：zhishi 本地知识库检索与相关事实上下文构建。
 - `features/attachments/`：文本附件。
 - `features/artifacts/`：代码块识别、本地作品库、预览与版本。
 - `features/qa/`：仅在 `?qa=1` 挂载的真实对话验收；不会写入聊天、记忆或设置。
@@ -55,3 +56,4 @@ index.html → src/main.js → src/app/createConversationApp.js
 - v0.3.1：调整内置助手行为的措辞；未改本地数据结构。
 - v0.3.2：修复中断回复丢失、历史误删无确认、启动兜底二次报错、复制降级失败与 Artifact 存储失败后的状态漂移。
 - v0.3.3：新增 `?qa=1` 真实对话验收面板；默认界面不显示，验收请求不写入用户数据。
+- v0.3.4：新增 zhishi 知识库接入功能（`src/features/knowledge/zhishiStore.js`）；修复发送锁在知识库检索前未生效的问题；将知识上下文作为低优先级独立 system message 插入固定规则之前，避免知识文本覆盖助手规则。
