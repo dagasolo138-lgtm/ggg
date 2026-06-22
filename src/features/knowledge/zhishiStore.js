@@ -79,9 +79,13 @@ export function scoreFact(fact, keywords) {
   return hits + (Number.isFinite(qualityScore) ? qualityScore : 0) * 0.1;
 }
 
-export async function searchRelevantFacts(userMessage) {
+export async function searchRelevantFacts(userMessage, signal) {
   const db = await openZhishiDB();
   if (!db) return [];
+  if (signal?.aborted) {
+    db.close();
+    return [];
+  }
 
   try {
     const keywords = extractKeywords(userMessage);
@@ -90,6 +94,7 @@ export async function searchRelevantFacts(userMessage) {
     const transaction = db.transaction(ZHISHI_STORE_NAME, "readonly");
     const store = transaction.objectStore(ZHISHI_STORE_NAME);
     const facts = await requestToPromise(store.getAll());
+    if (signal?.aborted) return [];
 
     let usedChars = 0;
     return (Array.isArray(facts) ? facts : [])

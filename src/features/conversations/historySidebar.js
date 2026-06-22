@@ -19,6 +19,7 @@ function createHistoryItem(conversation, activeId, handlers) {
   select.type = "button";
   select.className = "history-select";
   select.title = conversation.title;
+  select.disabled = Boolean(handlers.isSending);
 
   if (conversation.starred) {
     const marker = document.createElement("span");
@@ -37,6 +38,7 @@ function createHistoryItem(conversation, activeId, handlers) {
   remove.type = "button";
   remove.className = "history-delete";
   remove.setAttribute("aria-label", `删除对话：${conversation.title}`);
+  remove.disabled = Boolean(handlers.isSending);
   remove.textContent = "×";
   remove.addEventListener("click", (event) => {
     event.stopPropagation();

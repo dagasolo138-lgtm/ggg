@@ -36,7 +36,7 @@ export function createConversationApp(root) {
   const preferences = createPreferencesStore();
   const usage = createUsageStore();
   let settings = loadSettings();
-  let controller = null;
+  let abortController = null;
   let activeRequest = null;
   let isSending = false;
   let requestId = 0;
@@ -47,8 +47,8 @@ export function createConversationApp(root) {
 
   function persistInterruptedRequest(request) {
     if (!request) return false;
-    const content = request.finalContent.trim();
-    const hasReasoning = request.reasoningContent.trim().length > 0;
+    const content = String(request.finalContent || "").trim();
+    const hasReasoning = String(request.reasoningContent || "").trim().length > 0;
     if (!content && !hasReasoning) return false;
 
     conversations.appendTo(request.conversationId, "assistant", content || "已停止生成。", {
@@ -68,8 +68,8 @@ export function createConversationApp(root) {
       }
     }
     requestId += 1;
-    controller?.abort();
-    controller = null;
+    abortController?.abort();
+    abortController = null;
     activeRequest = null;
     isSending = false;
     setSending(false);
@@ -82,7 +82,7 @@ export function createConversationApp(root) {
   function syncEmpty() {
     const conversation = conversations.activeConversation;
     ui.emptyState.classList.toggle("is-hidden", conversation.messages.length > 0);
-    conversationActions?.sync(conversation, Boolean(controller));
+    conversationActions?.sync(conversation, Boolean(abortController));
   }
 
   function showError(message = "") {
@@ -102,8 +102,10 @@ export function createConversationApp(root) {
     ui.sendButton.disabled = active;
     ui.stopButton.hidden = !active;
     ui.attachButton.disabled = active;
+    ui.openHistory.disabled = active;
     ui.composer.classList.toggle("is-sending", active);
     conversationActions?.sync(conversations.activeConversation, active);
+    refreshHistory();
   }
 
   function renderAttachments() {
@@ -219,6 +221,7 @@ export function createConversationApp(root) {
         conversations.remove(id);
         refreshHistory();
       },
+      isSending,
     });
   }
 
@@ -372,12 +375,16 @@ export function createConversationApp(root) {
       return;
     }
 
+    const controller = new AbortController();
+    abortController = controller;
+    activeRequest = controller;
+
     const attachmentContext = attachments.buildTextContext();
     const currentPreferences = preferences.snapshot;
     let knowledgeContext = "";
     try {
       if (currentPreferences.zhishi?.enabled) {
-        const facts = await searchRelevantFacts(prompt);
+        const facts = await searchRelevantFacts(prompt, controller.signal);
         knowledgeContext = buildKnowledgeContext(facts);
       }
     } catch (error) {
@@ -386,7 +393,13 @@ export function createConversationApp(root) {
       setSending(false);
       return;
     }
-    const requestController = new AbortController();
+    if (controller.signal.aborted) {
+      isSending = false;
+      setSending(false);
+      return;
+    }
+
+    const requestController = controller;
     const requestSettings = {
       ...settings,
       systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, currentPreferences),
@@ -415,7 +428,7 @@ export function createConversationApp(root) {
       reasoningContent: "",
       requestUsage: null,
     };
-    controller = requestController;
+    abortController = requestController;
     activeRequest = request;
 
     refreshHistory();
@@ -498,7 +511,7 @@ export function createConversationApp(root) {
       );
     } finally {
       if (id === requestId && activeRequest === request) {
-        controller = null;
+        abortController = null;
         activeRequest = null;
         isSending = false;
         setSending(false);
@@ -585,7 +598,7 @@ export function createConversationApp(root) {
     ui.apiKey.type = hidden ? "text" : "password";
     ui.toggleKey.textContent = hidden ? "隐藏" : "显示";
   });
-  ui.stopButton.addEventListener("click", () => controller?.abort());
+  ui.stopButton.addEventListener("click", () => abortController?.abort());
   ui.composer.addEventListener("submit", send);
   ui.prompt.addEventListener("input", autoGrow);
   ui.prompt.addEventListener("keydown", (event) => {

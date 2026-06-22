@@ -180,6 +180,7 @@ export function renderPersonalizationView({ root, preferences, getBasePrompt }) 
   const knowledgeSection = element("section", "memory-section");
   knowledgeSection.append(element("h3", "personalization-section-title", "知识库"));
   knowledgeSection.append(element("p", "memory-empty", "开启后每次对话前自动从 zhishi 知识库检索相关事实注入上下文"));
+  knowledgeSection.append(element("p", "settings-inline-status", "开启后，匹配到的本地事实将随对话内容发送至 DeepSeek API，请确认你接受此行为。"));
   const zhishiToggle = toggleField("接入 zhishi 知识库", "", state.zhishi?.enabled);
   zhishiToggle.input.id = "zhishi-enabled";
   zhishiToggle.input.addEventListener("change", () => {
