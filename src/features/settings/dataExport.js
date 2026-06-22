@@ -7,7 +7,7 @@ function createDownload(filename, content, type = "application/json;charset=utf-
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function downloadJson(filename, payload) {
@@ -26,16 +26,23 @@ export function conversationAsText(conversation) {
 
 export async function copyText(text) {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Safari or a restricted context may deny Clipboard API access.
+    }
   }
 
   const textarea = document.createElement("textarea");
   textarea.value = text;
+  textarea.setAttribute("readonly", "");
   textarea.style.position = "fixed";
   textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
   document.body.append(textarea);
   textarea.select();
-  document.execCommand("copy");
+  const copied = document.execCommand("copy");
   textarea.remove();
+  if (!copied) throw new Error("当前浏览器无法复制文本。");
 }
