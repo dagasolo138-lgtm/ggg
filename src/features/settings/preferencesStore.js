@@ -23,6 +23,9 @@ const DEFAULT_PREFERENCES = {
   notifications: {
     chatComplete: false,
   },
+  zhishi: {
+    enabled: false,
+  },
 };
 
 function clone(value) {
@@ -81,6 +84,9 @@ function normalize(value) {
     memories: rawMemories.map(normalizeMemory).filter(Boolean).slice(0, MAX_MEMORY_ITEMS),
     notifications: {
       chatComplete: Boolean(value?.notifications?.chatComplete),
+    },
+    zhishi: {
+      enabled: Boolean(value?.zhishi?.enabled),
     },
   };
 }
@@ -187,6 +193,12 @@ export function createPreferencesStore() {
 
     updateNotifications(notifications) {
       preferences.notifications = { chatComplete: Boolean(notifications.chatComplete) };
+      persist();
+      return snapshot();
+    },
+
+    updateZhishi(zhishi) {
+      preferences.zhishi = { enabled: Boolean(zhishi.enabled) };
       persist();
       return snapshot();
     },

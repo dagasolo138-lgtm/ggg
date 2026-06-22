@@ -177,6 +177,18 @@ export function renderPersonalizationView({ root, preferences, getBasePrompt }) 
     styleStatus.textContent = "已保存。";
   });
 
+  const knowledgeSection = element("section", "memory-section");
+  knowledgeSection.append(element("h3", "personalization-section-title", "知识库"));
+  knowledgeSection.append(element("p", "memory-empty", "开启后每次对话前自动从 zhishi 知识库检索相关事实注入上下文"));
+  const zhishiToggle = toggleField("接入 zhishi 知识库", "", state.zhishi?.enabled);
+  zhishiToggle.input.id = "zhishi-enabled";
+  zhishiToggle.input.addEventListener("change", () => {
+    preferences.updateZhishi({ enabled: zhishiToggle.input.checked });
+    previewContent.textContent = renderPreview();
+  });
+  knowledgeSection.append(zhishiToggle.row);
+  knowledgeSection.append(element("p", "settings-inline-status", "需要在同一浏览器中打开过 zhishi 页面并积累事实。知识库地址：dagasolo138-lgtm.github.io/zhishi/"));
+
   const memorySection = element("section", "memory-section");
   memorySection.append(element("h3", "personalization-section-title", "记忆"));
   const memoryList = element("div", "memory-list");
@@ -210,5 +222,5 @@ export function renderPersonalizationView({ root, preferences, getBasePrompt }) 
     renderPersonalizationView({ root, preferences, getBasePrompt });
   }));
 
-  root.append(preview, styleForm, memorySection);
+  root.append(preview, styleForm, knowledgeSection, memorySection);
 }
