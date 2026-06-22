@@ -58,3 +58,4 @@ index.html → src/main.js → src/app/createConversationApp.js
 - v0.3.3：新增 `?qa=1` 真实对话验收面板；默认界面不显示，验收请求不写入用户数据。
 - v0.3.4：新增 zhishi 知识库接入功能（`src/features/knowledge/zhishiStore.js`）；修复发送锁在知识库检索前未生效的问题；将知识上下文作为低优先级独立 system message 插入固定规则之前，避免知识文本覆盖助手规则。
 - v0.3.5：修复 zhishi 检索阶段停止与历史切换竞态；删除未使用 zhishiEnabled 存储 key；补充本地事实会发送至 DeepSeek API 的隐私提示。
+- v0.3.6：修复 zhishi 检索提前返回时未清空 abortController 与 activeRequest 的残留脏状态。
