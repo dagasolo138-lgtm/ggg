@@ -28,15 +28,17 @@ function parseSseEvent(rawEvent, onDelta) {
   });
 }
 
-export function buildRequestMessages(systemPrompt, history) {
+export function buildRequestMessages(systemPrompt, history, knowledgeContext = "") {
+  const systemContent = buildAssistantInstruction(systemPrompt);
+  const content = knowledgeContext?.trim() ? `${systemContent}\n\n${knowledgeContext.trim()}` : systemContent;
   return [
-    { role: "system", content: buildAssistantInstruction(systemPrompt) },
+    { role: "system", content },
     ...history.map(({ role, content, apiContent }) => ({ role, content: apiContent || content })),
   ];
 }
 
-export async function streamCompletion({ settings, history, signal, onDelta }) {
-  const messages = buildRequestMessages(settings.systemPrompt, history);
+export async function streamCompletion({ settings, history, knowledgeContext = "", signal, onDelta }) {
+  const messages = buildRequestMessages(settings.systemPrompt, history, knowledgeContext);
 
   const body = {
     model: settings.model,

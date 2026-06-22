@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   model: "bin-deepseek-model",
   thinkingMode: "bin-deepseek-thinking-mode",
   systemPrompt: "bin-deepseek-system-prompt",
+  zhishiEnabled: "bin-zhishi-enabled",
 };
 
 export const MODEL_LABELS = {

@@ -8,6 +8,7 @@ import { renderAttachmentTray } from "../features/attachments/attachmentView.js"
 import { createConversationActions } from "../features/conversations/conversationActions.js";
 import { createConversationStore } from "../features/conversations/conversationStore.js";
 import { renderHistorySidebar } from "../features/conversations/historySidebar.js";
+import { searchRelevantFacts, buildKnowledgeContext } from "../features/knowledge/zhishiStore.js";
 import { conversationAsText, copyText, downloadJson } from "../features/settings/dataExport.js";
 import { buildPersonalizedSystemPrompt, createPreferencesStore } from "../features/settings/preferencesStore.js";
 import { createSettingsNavigator } from "../features/settings/settingsNavigator.js";
@@ -359,9 +360,15 @@ export function createConversationApp(root) {
     }
 
     const attachmentContext = attachments.buildTextContext();
+    const currentPreferences = preferences.snapshot;
+    let knowledgeContext = "";
+    if (currentPreferences.zhishi?.enabled) {
+      const facts = await searchRelevantFacts(prompt);
+      knowledgeContext = buildKnowledgeContext(facts);
+    }
     const requestSettings = {
       ...settings,
-      systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot),
+      systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, currentPreferences),
     };
     const apiPrompt = `${prompt}${attachmentContext}`;
     const id = ++requestId;
@@ -407,6 +414,7 @@ export function createConversationApp(root) {
       await streamCompletion({
         settings: requestSettings,
         history: conversations.activeConversation.messages,
+        knowledgeContext,
         signal: requestController.signal,
         onDelta(delta) {
           if (id !== requestId || activeRequest !== request) return;
