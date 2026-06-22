@@ -103,6 +103,10 @@ export function createConversationStore() {
     return state.conversations.find((conversation) => conversation.id === state.activeId) || state.conversations[0];
   }
 
+  function find(id) {
+    return state.conversations.find((conversation) => conversation.id === id) || null;
+  }
+
   function touch(conversation) {
     conversation.updatedAt = Date.now();
   }
@@ -122,6 +126,34 @@ export function createConversationStore() {
         attachments: message.attachments.map((attachment) => ({ ...attachment })),
       })),
     };
+  }
+
+  function appendTo(id, role, content, extras = {}) {
+    const conversation = find(id) || active();
+    conversation.messages.push({
+      role,
+      content,
+      apiContent: typeof extras.apiContent === "string" ? extras.apiContent : content,
+      reasoningContent: extras.reasoningContent || "",
+      thinkingMode: extras.thinkingMode || "disabled",
+      attachments: normalizeAttachments(extras.attachments),
+    });
+    if (role === "user" && conversation.messages.filter((message) => message.role === "user").length === 1 && conversation.title === "新对话") {
+      conversation.title = buildTitle(content);
+    }
+    touch(conversation);
+    persist();
+    return snapshot(conversation);
+  }
+
+  function removeLastFrom(id) {
+    const conversation = find(id) || active();
+    if (conversation.messages.length) {
+      conversation.messages.pop();
+      touch(conversation);
+      persist();
+    }
+    return snapshot(conversation);
   }
 
   return {
@@ -153,7 +185,7 @@ export function createConversationStore() {
     },
 
     rename(id, title) {
-      const conversation = state.conversations.find((item) => item.id === id);
+      const conversation = find(id);
       const nextTitle = normalizeManualTitle(title);
       if (!conversation || !nextTitle) return this.activeConversation;
       conversation.title = nextTitle;
@@ -163,7 +195,7 @@ export function createConversationStore() {
     },
 
     toggleStar(id) {
-      const conversation = state.conversations.find((item) => item.id === id);
+      const conversation = find(id);
       if (!conversation) return this.activeConversation;
       conversation.starred = !conversation.starred;
       touch(conversation);
@@ -196,29 +228,15 @@ export function createConversationStore() {
     },
 
     append(role, content, extras = {}) {
-      const conversation = active();
-      conversation.messages.push({
-        role,
-        content,
-        apiContent: typeof extras.apiContent === "string" ? extras.apiContent : content,
-        reasoningContent: extras.reasoningContent || "",
-        thinkingMode: extras.thinkingMode || "disabled",
-        attachments: normalizeAttachments(extras.attachments),
-      });
-      if (role === "user" && conversation.messages.filter((message) => message.role === "user").length === 1 && conversation.title === "新对话") {
-        conversation.title = buildTitle(content);
-      }
-      touch(conversation);
-      persist();
-      return snapshot(conversation);
+      return appendTo(state.activeId, role, content, extras);
     },
 
+    appendTo,
+
     removeLast() {
-      const conversation = active();
-      conversation.messages.pop();
-      touch(conversation);
-      persist();
-      return snapshot(conversation);
+      return removeLastFrom(state.activeId);
     },
+
+    removeLastFrom,
   };
 }
