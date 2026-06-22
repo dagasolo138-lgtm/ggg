@@ -15,7 +15,7 @@ function downloadArtifact(artifact) {
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function createArtifactWorkspace({ ui, store, getConversationId, onError }) {
@@ -94,8 +94,12 @@ export function createArtifactWorkspace({ ui, store, getConversationId, onError 
         }
       },
       onSelectVersion(versionId) {
-        store.selectVersion(activeId, versionId);
-        render();
+        try {
+          store.selectVersion(activeId, versionId);
+          render();
+        } catch (error) {
+          onError?.(error instanceof Error ? error.message : "无法切换 Artifact 版本。");
+        }
       },
       async onCopy() {
         const artifact = currentArtifact();
@@ -116,10 +120,14 @@ export function createArtifactWorkspace({ ui, store, getConversationId, onError 
         const artifact = currentArtifact();
         if (!artifact) return;
         if (!window.confirm(`删除 Artifact「${artifact.title}」及其全部版本？`)) return;
-        store.remove(artifact.id);
-        activeId = store.list()[0]?.id || null;
-        editing = false;
-        render();
+        try {
+          store.remove(artifact.id);
+          activeId = store.list()[0]?.id || null;
+          editing = false;
+          render();
+        } catch (error) {
+          onError?.(error instanceof Error ? error.message : "无法删除 Artifact。");
+        }
       },
     });
   }
