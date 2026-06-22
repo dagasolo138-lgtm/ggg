@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   model: "bin-deepseek-model",
   thinkingMode: "bin-deepseek-thinking-mode",
   systemPrompt: "bin-deepseek-system-prompt",
+  // 预留 key，当前 zhishi 开关存储在偏好对象中
   zhishiEnabled: "bin-zhishi-enabled",
 };
 

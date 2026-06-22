@@ -38,6 +38,7 @@ export function createConversationApp(root) {
   let settings = loadSettings();
   let controller = null;
   let activeRequest = null;
+  let isSending = false;
   let requestId = 0;
   let saveStatusTimer = null;
   let settingsNavigator;
@@ -70,6 +71,7 @@ export function createConversationApp(root) {
     controller?.abort();
     controller = null;
     activeRequest = null;
+    isSending = false;
     setSending(false);
   }
 
@@ -338,16 +340,25 @@ export function createConversationApp(root) {
 
   async function send(event) {
     event.preventDefault();
-    if (controller) return;
+    if (isSending) return;
+
+    isSending = true;
+    setSending(true);
 
     const selectedAttachments = attachments.list();
     const hasTextAttachment = selectedAttachments.some((attachment) => attachment.kind === "text");
     const typedPrompt = ui.prompt.value.trim();
     const prompt = typedPrompt || (hasTextAttachment ? "请分析我附带的文件。" : "");
 
-    if (!prompt) return;
+    if (!prompt) {
+      isSending = false;
+      setSending(false);
+      return;
+    }
     if (attachments.hasUnsupportedImages()) {
       showError("当前 DeepSeek V4 API 不支持图片输入。请移除图片，或等待接入视觉模型后再发送。");
+      isSending = false;
+      setSending(false);
       return;
     }
 
@@ -356,16 +367,26 @@ export function createConversationApp(root) {
     if (problem) {
       showError(problem);
       openConnectionSheet();
+      isSending = false;
+      setSending(false);
       return;
     }
 
     const attachmentContext = attachments.buildTextContext();
     const currentPreferences = preferences.snapshot;
     let knowledgeContext = "";
-    if (currentPreferences.zhishi?.enabled) {
-      const facts = await searchRelevantFacts(prompt);
-      knowledgeContext = buildKnowledgeContext(facts);
+    try {
+      if (currentPreferences.zhishi?.enabled) {
+        const facts = await searchRelevantFacts(prompt);
+        knowledgeContext = buildKnowledgeContext(facts);
+      }
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "知识库检索失败，请稍后再试。");
+      isSending = false;
+      setSending(false);
+      return;
     }
+    const requestController = new AbortController();
     const requestSettings = {
       ...settings,
       systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, currentPreferences),
@@ -381,10 +402,11 @@ export function createConversationApp(root) {
       });
     } catch (error) {
       showError(error instanceof Error ? error.message : "无法保存当前消息。");
+      isSending = false;
+      setSending(false);
       return;
     }
 
-    const requestController = new AbortController();
     const request = {
       id,
       conversationId,
@@ -402,7 +424,6 @@ export function createConversationApp(root) {
     ui.prompt.value = "";
     autoGrow();
     showError();
-    setSending(true);
 
     const assistantView = renderMessage(ui.messages, {
       role: "assistant",
@@ -479,6 +500,7 @@ export function createConversationApp(root) {
       if (id === requestId && activeRequest === request) {
         controller = null;
         activeRequest = null;
+        isSending = false;
         setSending(false);
         ui.prompt.focus();
       }
