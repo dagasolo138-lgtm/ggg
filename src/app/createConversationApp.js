@@ -36,16 +36,39 @@ export function createConversationApp(root) {
   const usage = createUsageStore();
   let settings = loadSettings();
   let controller = null;
+  let activeRequest = null;
   let requestId = 0;
   let saveStatusTimer = null;
   let settingsNavigator;
   let conversationActions;
   let artifactWorkspace;
 
+  function persistInterruptedRequest(request) {
+    if (!request) return false;
+    const content = request.finalContent.trim();
+    const hasReasoning = request.reasoningContent.trim().length > 0;
+    if (!content && !hasReasoning) return false;
+
+    conversations.appendTo(request.conversationId, "assistant", content || "已停止生成。", {
+      reasoningContent: hasReasoning ? request.reasoningContent : "",
+      thinkingMode: request.thinkingMode,
+    });
+    return true;
+  }
+
   function cancelActiveRequest() {
+    const request = activeRequest;
+    if (request) {
+      try {
+        persistInterruptedRequest(request);
+      } catch (error) {
+        showError(error instanceof Error ? error.message : "已停止生成，但未能保存已生成内容。");
+      }
+    }
     requestId += 1;
     controller?.abort();
     controller = null;
+    activeRequest = null;
     setSending(false);
   }
 
@@ -179,10 +202,19 @@ export function createConversationApp(root) {
         closeDrawer();
       },
       onDelete(id) {
-        cancelActiveRequest();
-        clearAttachments();
+        const conversation = conversations.list().find((item) => item.id === id);
+        if (!conversation || !window.confirm(`删除“${conversation.title}”？此操作无法恢复。`)) return;
+
+        if (id === conversations.activeId) {
+          cancelActiveRequest();
+          clearAttachments();
+          conversations.remove(id);
+          renderCurrentConversation();
+          return;
+        }
+
         conversations.remove(id);
-        renderCurrentConversation();
+        refreshHistory();
       },
     });
   }
@@ -332,13 +364,31 @@ export function createConversationApp(root) {
       systemPrompt: buildPersonalizedSystemPrompt(settings.systemPrompt, preferences.snapshot),
     };
     const apiPrompt = `${prompt}${attachmentContext}`;
-
     const id = ++requestId;
-    controller = new AbortController();
-    conversations.append("user", prompt, {
-      apiContent: apiPrompt,
-      attachments: selectedAttachments,
-    });
+    const conversationId = conversations.activeId;
+
+    try {
+      conversations.appendTo(conversationId, "user", prompt, {
+        apiContent: apiPrompt,
+        attachments: selectedAttachments,
+      });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "无法保存当前消息。");
+      return;
+    }
+
+    const requestController = new AbortController();
+    const request = {
+      id,
+      conversationId,
+      thinkingMode: settings.thinkingMode,
+      finalContent: "",
+      reasoningContent: "",
+      requestUsage: null,
+    };
+    controller = requestController;
+    activeRequest = request;
+
     refreshHistory();
     syncEmpty();
     renderMessage(ui.messages, { role: "user", content: prompt, attachments: selectedAttachments });
@@ -352,60 +402,75 @@ export function createConversationApp(root) {
       mode: settings.thinkingMode,
       isStreaming: true,
     });
-    let finalContent = "";
-    let reasoningContent = "";
-    let requestUsage = null;
 
     try {
       await streamCompletion({
         settings: requestSettings,
         history: conversations.activeConversation.messages,
-        signal: controller.signal,
+        signal: requestController.signal,
         onDelta(delta) {
-          if (id !== requestId) return;
-          finalContent += delta.content;
-          reasoningContent += delta.reasoningContent;
-          if (delta.usage) requestUsage = delta.usage;
+          if (id !== requestId || activeRequest !== request) return;
+          request.finalContent += delta.content;
+          request.reasoningContent += delta.reasoningContent;
+          if (delta.usage) request.requestUsage = delta.usage;
           updateStreamingMessage(assistantView, delta);
           scrollToEnd(ui.messages);
         },
       });
 
-      if (id !== requestId) return;
-      if (!finalContent.trim()) throw new Error("接口没有返回最终回答。请检查模型权限、内容限制或系统提示词。");
+      if (id !== requestId || activeRequest !== request) return;
+      if (!request.finalContent.trim()) throw new Error("接口没有返回最终回答。请检查模型权限、内容限制或系统提示词。");
 
-      const hasReasoning = reasoningContent.trim().length > 0;
-      conversations.append("assistant", finalContent, {
-        reasoningContent: hasReasoning ? reasoningContent : "",
-        thinkingMode: settings.thinkingMode,
+      const hasReasoning = request.reasoningContent.trim().length > 0;
+      conversations.appendTo(conversationId, "assistant", request.finalContent, {
+        reasoningContent: hasReasoning ? request.reasoningContent : "",
+        thinkingMode: request.thinkingMode,
       });
-      usage.record(requestUsage);
+      try {
+        usage.record(request.requestUsage);
+      } catch {
+        showError("回答已完成，但本机用量统计未保存。");
+      }
       finalizeStreamingMessage(assistantView, { hasReasoning });
-      attachArtifactCandidates(assistantView, extractArtifactCandidates(finalContent), openArtifactCandidate);
+      attachArtifactCandidates(assistantView, extractArtifactCandidates(request.finalContent), openArtifactCandidate);
       clearAttachments();
       refreshHistory();
-      notifyCompletion(finalContent);
+      notifyCompletion(request.finalContent);
     } catch (error) {
-      if (id !== requestId) return;
+      if (id !== requestId || activeRequest !== request) return;
       const stopped = error?.name === "AbortError";
-      const hasReasoning = reasoningContent.trim().length > 0;
-      conversations.removeLast();
+      const hasReasoning = request.reasoningContent.trim().length > 0;
+      const hasPartialOutput = Boolean(request.finalContent || hasReasoning);
 
-      if (finalContent || hasReasoning) {
+      if (hasPartialOutput) {
+        conversations.appendTo(conversationId, "assistant", request.finalContent || (stopped ? "已停止生成。" : "生成中断。"), {
+          reasoningContent: hasReasoning ? request.reasoningContent : "",
+          thinkingMode: request.thinkingMode,
+        });
         finalizeStreamingMessage(assistantView, { hasReasoning });
-        if (!finalContent) assistantView.answer.textContent = stopped ? "已停止生成。" : "生成中断。";
+        if (!request.finalContent) assistantView.answer.textContent = stopped ? "已停止生成。" : "生成中断。";
+        if (request.finalContent) attachArtifactCandidates(assistantView, extractArtifactCandidates(request.finalContent), openArtifactCandidate);
+        clearAttachments();
       } else {
+        conversations.removeLastFrom(conversationId);
         assistantView.article.remove();
+        ui.prompt.value = prompt;
+        autoGrow();
       }
 
       syncEmpty();
       refreshHistory();
-      ui.prompt.value = prompt;
-      autoGrow();
-      showError(stopped ? "已停止生成。上一条消息已放回输入框，可以修改后重试。" : error instanceof Error ? error.message : "请求失败，请稍后再试。");
+      showError(
+        stopped
+          ? (hasPartialOutput ? "已停止生成，已保留已生成内容。" : "已停止生成。上一条消息已放回输入框，可以修改后重试。")
+          : error instanceof Error
+            ? (hasPartialOutput ? `${error.message} 已保留已生成内容。` : error.message)
+            : "请求失败，请稍后再试。",
+      );
     } finally {
-      if (id === requestId) {
+      if (id === requestId && activeRequest === request) {
         controller = null;
+        activeRequest = null;
         setSending(false);
         ui.prompt.focus();
       }
